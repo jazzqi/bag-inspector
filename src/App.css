@@ -14,7 +14,7 @@
   font-family: monospace;
 }
 
-.information {
+.metadata {
   padding-left: 20px;
   padding-top: 20px;
   position: fixed;
@@ -35,40 +35,7 @@
   font-size: 50px;
   color: white;
 }
-.msgDef {
+
+.msgDefinition {
   cursor: help;
-}
-table {
-  white-space: nowrap;
-  padding-top: 20px;
-  padding-left: 20px;
-}
-
-thead tr th {
-  position: sticky;
-  padding: 3px 1em;
-  top: 130px;
-  text-align: left;
-  z-index: 2;
-  background-color: white;
-}
-
-table td {
-  padding: 3px 1em;
-  text-align: left;
-  box-sizing: border-box;
-}
-
-table td:first-child {
-  position: sticky;
-  left: 0; /* 首行在左 */
-  z-index: 1;
-  background-color: white;
-}
-
-table th:first-child {
-  position: sticky;
-  left: 0; /* 首行在左 */
-  z-index: 3;
-  background-color: white;
 }

@@ -1,21 +1,21 @@
 import React, { useState, useCallback } from 'react'
 import lz4 from 'lz4js'
 import './App.css'
+import './table.css'
 import { open, TimeUtil } from 'rosbag'
 import { useDropzone } from 'react-dropzone'
 let topics_all = {}
 
 const App = (props: any) => {
   const onDrop = useCallback((acceptedFiles) => {
-    // Do something with the files
     const files = acceptedFiles
-    parseFile(files)
+    parseBag(files)
   }, [])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop })
   const [topicCounter, setTopicCounter] = useState<any>()
   const [isDragFile, setIsDragFile] = useState<boolean>(true)
-  const [metadata, setMetadata] = useState<any>(null)
+  const [metadata, setMetadata] = useState<{ startTime: any; endTime: any; duration: number }>(undefined)
   const [topicList, setTopicList] = useState<string[]>([])
   const [progress, setProgress] = useState<number>(0)
   const [tpoicSum, setTopicSum] = useState<number>(0)
@@ -23,12 +23,12 @@ const App = (props: any) => {
 
   const process = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
-    parseFile(files)
+    parseBag(files)
   }
 
-  const parseFile = async (files) => {
+  const parseBag = async (files) => {
     setIsDragFile(false)
-    setTopicList(new Array())
+    setTopicList([])
     setMsgDefinitions(new Map())
     topics_all = {}
 
@@ -86,9 +86,7 @@ const App = (props: any) => {
             topics_all[topic] = temp
           }
         } else {
-          let temp = new Array()
-          temp.push(num)
-          topics_all[topic] = temp
+          topics_all[topic] = [num]
         }
 
         topics.add(topic)
@@ -120,11 +118,10 @@ const App = (props: any) => {
         </div>
       ) : (
         <>
-          {' '}
-          {metadata ? (
+          {metadata && (
             <div className="baginfo">
               <div style={{ height: '80px' }}>
-                <div className="information">
+                <div className="metadata">
                   <hr />
                   <div>
                     <b>Start Time:</b>
@@ -163,7 +160,7 @@ const App = (props: any) => {
                           <td>{t}</td>
                           <td>{msgDefinitions.get(t)[0]}</td>
                           <td>
-                            <span className="msgDef" title={msgDefinitions.get(t)[3]}>
+                            <span className="msgDefinition" title={msgDefinitions.get(t)[3]}>
                               {msgDefinitions.get(t)[1]}
                             </span>
                           </td>
@@ -191,7 +188,7 @@ const App = (props: any) => {
                 </table>
               )}
             </div>
-          ) : null}
+          )}
         </>
       )}
     </div>
