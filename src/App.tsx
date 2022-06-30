@@ -14,9 +14,11 @@ const App = (props: any) => {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop })
   const [topicCounter, setTopicCounter] = useState<any>()
-  const [isDragFile, setIsDragFile] = useState<boolean>(true)
-  const [metadata, setMetadata] = useState<{ startTime: any; endTime: any; duration: number }>(undefined)
-  const [topicList, setTopicList] = useState<string[]>([])
+  const [isDragedFile, setIsDragedFile] = useState<boolean>(true)
+
+  const [bagMetadata, setBagMetadata] = useState<{ startTime: any; endTime: any; duration: number }>(undefined)
+  const [topicNameList, setTopicNameList] = useState<string[]>([])
+
   const [progress, setProgress] = useState<number>(0)
   const [tpoicSum, setTopicSum] = useState<number>(0)
   const [msgDefinitions, setMsgDefinitions] = useState<Map<string, string[]>>(new Map())
@@ -27,8 +29,8 @@ const App = (props: any) => {
   }
 
   const parseBag = async (files) => {
-    setIsDragFile(false)
-    setTopicList([])
+    setIsDragedFile(false)
+    setTopicNameList([])
     setMsgDefinitions(new Map())
     topics_all = {}
 
@@ -38,7 +40,7 @@ const App = (props: any) => {
     const bag = await open(files[0])
     let sum = (bag.endTime.sec - bag.startTime.sec) * 500 + parseInt(((bag.endTime.sec - bag.startTime.sec) / 2000000) as any)
     setTopicSum(sum)
-    setMetadata({
+    setBagMetadata({
       startTime: bag.startTime,
       endTime: bag.endTime,
       duration: TimeUtil.compare(bag.endTime, bag.startTime),
@@ -100,40 +102,40 @@ const App = (props: any) => {
       }
     )
     setTopicCounter(counter)
-    setTopicList(Array.from(topics).sort())
+    setTopicNameList(Array.from(topics).sort())
   }
 
   return (
     <div>
-      <div style={{ height: '1px', width: '100%' }}>
+      <div style={{ display: 'none', width: '100%' }}>
         <div className="file">
           CHOOSE BAG:
           <input type="file" accept=".bag" onChange={process}></input>
         </div>
       </div>
-      {isDragFile ? (
+      {isDragedFile ? (
         <div {...getRootProps()} className="dragFile">
           <input {...getInputProps()} onChange={process} />
-          {isDragActive ? <p>正在拖拽bag</p> : <p>将文件拖拽到此处,或者单击此处上传bag</p>}
+          {isDragActive ? <p>可以</p> : <p>拖入 rosbag 文件</p>}
         </div>
       ) : (
         <>
-          {metadata && (
+          {bagMetadata && (
             <div className="baginfo">
               <div style={{ height: '80px' }}>
                 <div className="metadata">
                   <hr />
                   <div>
                     <b>Start Time:</b>
-                    <FormatedDateTime datetime={metadata.startTime}></FormatedDateTime>
+                    <FormatedDateTime datetime={bagMetadata.startTime}></FormatedDateTime>
                   </div>
                   <div>
                     <b>End Time: </b>
-                    <FormatedDateTime datetime={metadata.endTime}></FormatedDateTime>
+                    <FormatedDateTime datetime={bagMetadata.endTime}></FormatedDateTime>
                   </div>
                   <div>
                     <b>Duration: </b>
-                    {metadata.duration}s
+                    {bagMetadata.duration}s
                   </div>
                   <hr />
                 </div>
@@ -144,31 +146,37 @@ const App = (props: any) => {
                 <table>
                   <thead>
                     <tr>
-                      <th>Topic</th>
-                      <th>Caller ID</th>
-                      <th>Message Definition</th>
-                      <th>Message Definition MD5</th>
-                      <th>Message Count</th>
-                      <th>Message Frequency</th>
-                      <th>Message Frequency Image</th>
+                      <th></th>
+                      <th>Topic Name</th>
+                      <th>Caller</th>
+                      <th>Definition</th>
+                      <th>Count</th>
+                      <th>Frequency</th>
+                      {/* <th>Distribution</th> */}
                     </tr>
                   </thead>
                   <tbody>
-                    {topicList &&
-                      topicList.map((t) => (
+                    {topicNameList &&
+                      topicNameList.map((t) => (
                         <tr id={t}>
+                          <td>
+                            <input type="checkbox"></input>
+                          </td>
                           <td>{t}</td>
-                          <td>{msgDefinitions.get(t)[0]}</td>
+                          <td>{msgDefinitions.get(t)[0] ?? 'N/A'}</td>
                           <td>
                             <span className="msgDefinition" title={msgDefinitions.get(t)[3]}>
                               {msgDefinitions.get(t)[1]}
                             </span>
+                            <small title={msgDefinitions.get(t)[2]}>({msgDefinitions.get(t)[2].slice(0, 8)})</small>
                           </td>
-                          <td>{msgDefinitions.get(t)[2]}</td>
                           <td>{topicCounter[t]}</td>
-                          <td>{Math.round(topicCounter[t] / metadata.duration)}hz</td>
                           <td>
-                            <div
+                            {Math.round(topicCounter[t] / bagMetadata.duration)}
+                            <small>Hz</small>
+                          </td>
+                          {/* <td> */}
+                            {/* <div
                               style={{
                                 position: 'relative',
                                 height: `21px`,
@@ -180,13 +188,15 @@ const App = (props: any) => {
                               {topics_all[t].map((str) => (
                                 <i style={{ position: 'absolute', float: 'left', left: `${str * 0.08}px`, width: '0.08px', height: `20px`, backgroundColor: 'blue' }} />
                               ))}
-                            </div>
-                          </td>
+                            </div> */}
+                          {/* </td> */}
                         </tr>
                       ))}
                   </tbody>
                 </table>
               )}
+
+              <h2>todo message distribution graph</h2>
             </div>
           )}
         </>
