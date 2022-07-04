@@ -9,3 +9,7 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
+*::selection {
+  background: #CAF0F8;
+  color: #1a1a1a;
+}

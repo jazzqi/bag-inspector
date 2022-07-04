@@ -1,9 +1,12 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import lz4 from 'lz4js'
-import './App.css'
-import './table.css'
 import { open, TimeUtil } from 'rosbag'
 import { useDropzone } from 'react-dropzone'
+import styles from './App.module.scss'
+import './table.css'
+import Timeline from './components/timeline'
+import prettyBytes from 'pretty-bytes'
+
 let topics_all = {}
 
 const App = (props: any) => {
@@ -12,15 +15,17 @@ const App = (props: any) => {
     parseBag(files)
   }, [])
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop })
+  const { getRootProps, getInputProps, isDragActive: isDragDropActivated } = useDropzone({ onDrop })
   const [topicCounter, setTopicCounter] = useState<any>()
   const [isDragedFile, setIsDragedFile] = useState<boolean>(true)
+  const [name, setName] = useState<string>('')
+  const [size, setSize] = useState<number>(0)
+  // const [topicCounter, set] = useState<any>()
 
-  const [bagMetadata, setBagMetadata] = useState<{ startTime: any; endTime: any; duration: number }>(undefined)
-  const [topicNameList, setTopicNameList] = useState<string[]>([])
+  const [metaData, setMetaData] = useState<{ startTime: any; endTime: any; duration: number }>(undefined)
+  const [topicList, setTopicList] = useState<string[]>([])
 
   const [progress, setProgress] = useState<number>(0)
-  const [tpoicSum, setTopicSum] = useState<number>(0)
   const [msgDefinitions, setMsgDefinitions] = useState<Map<string, string[]>>(new Map())
 
   const process = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,33 +33,38 @@ const App = (props: any) => {
     parseBag(files)
   }
 
-  const parseBag = async (files) => {
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     // parseBag(bag)
+  //   }, 1000)
+  // }, [])
+
+  const clearState = () => {
     setIsDragedFile(false)
-    setTopicNameList([])
+    setTopicList([])
     setMsgDefinitions(new Map())
     topics_all = {}
+  }
+
+  const parseBag = async (files) => {
+    console.log(files)
+    clearState()
 
     if (files.length === 0) {
       return
     }
     const bag = await open(files[0])
-    let sum = (bag.endTime.sec - bag.startTime.sec) * 500 + parseInt(((bag.endTime.sec - bag.startTime.sec) / 2000000) as any)
-    setTopicSum(sum)
-    setBagMetadata({
+    setMetaData({
       startTime: bag.startTime,
       endTime: bag.endTime,
       duration: TimeUtil.compare(bag.endTime, bag.startTime),
     })
 
+    setName(files[0].name)
+    setSize(files[0].size)
+
     const msgTypes = new Map<string, string[]>()
 
-    interface Connection {
-      topic: string
-      type: string
-      messageDefinition: string
-      callerid: string
-      md5sum: string
-    }
     Object.entries<Connection>(bag.connections).forEach(([_, v]) => {
       msgTypes.set(v.topic, [v.callerid, v.type, v.md5sum, v.messageDefinition])
     })
@@ -102,81 +112,104 @@ const App = (props: any) => {
       }
     )
     setTopicCounter(counter)
-    setTopicNameList(Array.from(topics).sort())
+    setTopicList(Array.from(topics).sort())
   }
 
   return (
     <div>
-      <div style={{ display: 'none', width: '100%' }}>
-        <div className="file">
-          CHOOSE BAG:
-          <input type="file" accept=".bag" onChange={process}></input>
-        </div>
-      </div>
+      <input type="file" accept=".bag" onChange={process} style={{ display: 'none' }}></input>
       {isDragedFile ? (
-        <div {...getRootProps()} className="dragFile">
+        <div {...getRootProps()} className={`${styles.dragdrop} ${isDragDropActivated && styles.activated}`}>
           <input {...getInputProps()} onChange={process} />
-          {isDragActive ? <p>可以</p> : <p>拖入 rosbag 文件</p>}
+          {isDragDropActivated ? <div>可以</div> : <div>拖入 rosbag 文件</div>}
         </div>
       ) : (
         <>
-          {bagMetadata && (
-            <div className="baginfo">
-              <div style={{ height: '80px' }}>
-                <div className="metadata">
-                  <hr />
-                  <div>
-                    <b>Start Time:</b>
-                    <FormatedDateTime datetime={bagMetadata.startTime}></FormatedDateTime>
-                  </div>
-                  <div>
-                    <b>End Time: </b>
-                    <FormatedDateTime datetime={bagMetadata.endTime}></FormatedDateTime>
-                  </div>
-                  <div>
-                    <b>Duration: </b>
-                    {bagMetadata.duration}s
-                  </div>
-                  <hr />
-                </div>
+          {metaData && (
+            <div className={styles.baginfo}>
+              <div>
+                <Timeline></Timeline>
               </div>
-              {progress < 100 ? (
-                <div style={{ padding: '20px' }}>{progress}%</div>
-              ) : (
-                <table>
+              {/*  */}
+              <hr />
+              <table>
+                <tbody>
+                  <tr>
+                    <th align="right">Name:</th>
+                    <td>{name}</td>
+                  </tr>
+                  <tr>
+                    <th align="right">Size:</th>
+                    <td>
+                      <div title={`${size} Bytes`}>{prettyBytes(size, { maximumFractionDigits: 2 })}</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th align="right">Begin:</th>
+                    <td>
+                      <FormatedDateTime datetime={metaData.startTime}></FormatedDateTime>,&nbsp;<FormatedTimestamp datetime={metaData.startTime}></FormatedTimestamp>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th align="right">End: </th>
+                    <td>
+                      <FormatedDateTime datetime={metaData.endTime}></FormatedDateTime>,&nbsp;<FormatedTimestamp datetime={metaData.endTime}></FormatedTimestamp>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th align="right">Duration: </th>
+                    <td>
+                      {metaData.duration}
+                      <small>s</small>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <hr />
+              {/*  */}
+              {progress < 100 && (
+                <div style={{ padding: '20px' }}>
+                  <em>{progress}%</em>
+                </div>
+              )}
+              {progress === 100 && (
+                <table className={styles.topicsTable} >
                   <thead>
                     <tr>
-                      <th></th>
-                      <th>Topic Name</th>
-                      <th>Caller</th>
-                      <th>Definition</th>
-                      <th>Count</th>
-                      <th>Frequency</th>
+                      <th>
+                        {/* indeterminate */}
+                        <input type="checkbox"></input>
+                      </th>
+                      <th align="left">Topic Name</th>
+                      <th align="left">Caller</th>
+                      <th align="left">Definition</th>
+                      <th align="right">Count</th>
+                      <th align="right">Frequency</th>
                       {/* <th>Distribution</th> */}
                     </tr>
                   </thead>
                   <tbody>
-                    {topicNameList &&
-                      topicNameList.map((t) => (
+                    {topicList &&
+                      topicList.map((t) => (
                         <tr id={t}>
-                          <td>
+                          <td align='center'>
                             <input type="checkbox"></input>
                           </td>
-                          <td>{t}</td>
-                          <td>{msgDefinitions.get(t)[0] ?? 'N/A'}</td>
-                          <td>
-                            <span className="msgDefinition" title={msgDefinitions.get(t)[3]}>
+                          <td align="left">{t}</td>
+                          <td align="left">{msgDefinitions.get(t)[0] ?? 'N/A'}</td>
+                          <td align="left">
+                            <span className={styles.msgDefinition} title={msgDefinitions.get(t)[3]}>
                               {msgDefinitions.get(t)[1]}
                             </span>
                             <small title={msgDefinitions.get(t)[2]}>({msgDefinitions.get(t)[2].slice(0, 8)})</small>
                           </td>
-                          <td>{topicCounter[t]}</td>
-                          <td>
-                            {Math.round(topicCounter[t] / bagMetadata.duration)}
+                          <td align="right">{topicCounter[t]}</td>
+                          <td align="right">
+                            {Math.round(topicCounter[t] / metaData.duration)}
                             <small>Hz</small>
                           </td>
                           {/* <td> */}
-                            {/* <div
+                          {/* <div
                               style={{
                                 position: 'relative',
                                 height: `21px`,
@@ -195,8 +228,6 @@ const App = (props: any) => {
                   </tbody>
                 </table>
               )}
-
-              <h2>todo message distribution graph</h2>
             </div>
           )}
         </>
@@ -207,6 +238,30 @@ const App = (props: any) => {
 
 const FormatedDateTime: React.FC<{
   datetime: { sec: number; nsec: number }
-}> = (props) => <span>{`${new Date(props.datetime.sec * 1000).toLocaleString()} sec: ${props.datetime.sec} nsec: ${props.datetime.nsec}`}</span>
+}> = (props) => <span title={new Date(props.datetime.sec * 1000).toLocaleString()}>{new Date(props.datetime.sec * 1000).toISOString()}</span>
+
+const FormatedTimestamp: React.FC<{
+  datetime: { sec: number; nsec: number }
+}> = (props) => (
+  <span>
+    <span>
+      {props.datetime.sec}
+      <small title="second">sec</small>
+    </span>
+    ,&nbsp;
+    <span>
+      {props.datetime.nsec}
+      <small title="nanosecond">nsec</small>
+    </span>
+  </span>
+)
+
+interface Connection {
+  topic: string
+  type: string
+  messageDefinition: string
+  callerid: string
+  md5sum: string
+}
 
 export default App
