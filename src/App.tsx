@@ -127,9 +127,6 @@ const App = (props: any) => {
         <>
           {metaData && (
             <div className={styles.baginfo}>
-              <div>
-                <Timeline></Timeline>
-              </div>
               {/*  */}
               <hr />
               <table>
@@ -173,7 +170,7 @@ const App = (props: any) => {
                 </div>
               )}
               {progress === 100 && (
-                <table className={styles.topicsTable} >
+                <table className={styles.topicsTable}>
                   <thead>
                     <tr>
                       <th>
@@ -191,8 +188,8 @@ const App = (props: any) => {
                   <tbody>
                     {topicList &&
                       topicList.map((t) => (
-                        <tr id={t}>
-                          <td align='center'>
+                        <tr id={t} className={styles.row}>
+                          <td align="center">
                             <input type="checkbox"></input>
                           </td>
                           <td align="left">{t}</td>
@@ -201,13 +198,16 @@ const App = (props: any) => {
                             <span className={styles.msgDefinition} title={msgDefinitions.get(t)[3]}>
                               {msgDefinitions.get(t)[1]}
                             </span>
-                            <small title={msgDefinitions.get(t)[2]}>({msgDefinitions.get(t)[2].slice(0, 8)})</small>
+                            <small className={styles.hash} title={msgDefinitions.get(t)[2]}>
+                              ({msgDefinitions.get(t)[2].slice(0, 8)})
+                            </small>
                           </td>
                           <td align="right">{topicCounter[t]}</td>
                           <td align="right">
                             {Math.round(topicCounter[t] / metaData.duration)}
                             <small>Hz</small>
                           </td>
+                          <Timeline></Timeline>
                           {/* <td> */}
                           {/* <div
                               style={{
@@ -228,6 +228,10 @@ const App = (props: any) => {
                   </tbody>
                 </table>
               )}
+              {/*  */}
+              <div>
+                {/* <Timeline></Timeline> */}
+              </div>
             </div>
           )}
         </>
