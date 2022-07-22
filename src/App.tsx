@@ -1,13 +1,16 @@
-import React, { useState, useCallback, useEffect } from 'react'
 import lz4 from 'lz4js'
-import { open, TimeUtil } from 'rosbag'
-import { useDropzone } from 'react-dropzone'
-import styles from './App.module.scss'
-import './table.css'
-import Timeline from './components/timeline'
 import prettyBytes from 'pretty-bytes'
+import React, { useCallback, useState } from 'react'
+import { useDropzone } from 'react-dropzone'
+import { open, TimeUtil } from 'rosbag'
+import styles from './App.module.scss'
+import Timeline from './components/timeline'
+import './table.css'
 
-let topics_all = {}
+import Select from 'react-select'
+// import { colourOptions } from '../data';
+
+let topic_data_map = {}
 
 const App = (props: any) => {
   const onDrop = useCallback((acceptedFiles) => {
@@ -43,7 +46,7 @@ const App = (props: any) => {
     setIsDragedFile(false)
     setTopicList([])
     setMsgDefinitions(new Map())
-    topics_all = {}
+    topic_data_map = {}
   }
 
   const parseBag = async (files) => {
@@ -84,21 +87,23 @@ const App = (props: any) => {
         },
       },
       (res) => {
-        const { topic, chunkOffset, totalChunks, timestamp } = res
+        const { topic, chunkOffset, totalChunks, timestamp: msg_ts } = res
         topics.add(topic)
+        // 最高支持 100Hz 可视化分辨率
+
         // 取 500 HZ 的数据
         // (timestamp.sec - bag.startTime.sec) * 500  秒 * 500
         // ((timestamp.nsec - bag.startTime.nsec) / 2000000) 纳秒除以 500
-        let num = (timestamp.sec - bag.startTime.sec) * 500 + parseInt(((timestamp.nsec - bag.startTime.nsec) / 2000000) as any)
+        let num = (msg_ts.sec - bag.startTime.sec) * 500 + parseInt(((msg_ts.nsec - bag.startTime.nsec) / 2000000) as any)
 
-        if (topics_all[topic]) {
-          let temp = topics_all[topic]
+        if (topic_data_map[topic]) {
+          let temp = topic_data_map[topic]
           if (temp[temp.length - 1] !== num) {
             temp.push(num)
-            topics_all[topic] = temp
+            topic_data_map[topic] = temp
           }
         } else {
-          topics_all[topic] = [num]
+          topic_data_map[topic] = [num]
         }
 
         topics.add(topic)
@@ -131,6 +136,9 @@ const App = (props: any) => {
               <hr />
               <table>
                 <tbody>
+                  <tr>
+                    <td colSpan={2}>Add param_aggregator information</td>
+                  </tr>
                   <tr>
                     <th align="right">Name:</th>
                     <td>{name}</td>
@@ -170,46 +178,64 @@ const App = (props: any) => {
                 </div>
               )}
               {progress === 100 && (
-                <table className={styles.topicsTable}>
-                  <thead>
-                    <tr>
-                      <th>
-                        {/* indeterminate */}
-                        <input type="checkbox"></input>
-                      </th>
-                      <th align="left">Topic Name</th>
-                      <th align="left">Caller</th>
-                      <th align="left">Definition</th>
-                      <th align="right">Count</th>
-                      <th align="right">Frequency</th>
-                      {/* <th>Distribution</th> */}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topicList &&
-                      topicList.map((t) => (
-                        <tr id={t} className={styles.row}>
-                          <td align="center">
-                            <input type="checkbox"></input>
-                          </td>
-                          <td align="left">{t}</td>
-                          <td align="left">{msgDefinitions.get(t)[0] ?? 'N/A'}</td>
-                          <td align="left">
-                            <span className={styles.msgDefinition} title={msgDefinitions.get(t)[3]}>
-                              {msgDefinitions.get(t)[1]}
-                            </span>
-                            <small className={styles.hash} title={msgDefinitions.get(t)[2]}>
-                              ({msgDefinitions.get(t)[2].slice(0, 8)})
-                            </small>
-                          </td>
-                          <td align="right">{topicCounter[t]}</td>
-                          <td align="right">
-                            {Math.round(topicCounter[t] / metaData.duration)}
-                            <small>Hz</small>
-                          </td>
-                          <Timeline></Timeline>
-                          {/* <td> */}
-                          {/* <div
+                <>
+                  {topicList && (
+                    // <select>
+                    //   {topicList.map((t) => (
+                    //     <option value={t}>{t}</option>
+                    //   ))}
+                    // </select>
+                    <Select
+                      //
+                      defaultValue={topicList.map((t)=>({value: t, label: t}))}
+                      isMulti
+                      name="selected_topics"
+                      // options={topicList}
+                      options={topicList.map((t) => ({ value: t, label: t }))}
+                      className="basic-multi-select"
+                      // classNamePrefix="select"
+                    />
+                  )}
+                  <table className={styles.topicsTable}>
+                    <thead>
+                      <tr>
+                        <th>
+                          {/* indeterminate */}
+                          <input type="checkbox"></input>
+                        </th>
+                        <th align="left">Topic Name</th>
+                        <th align="left">Caller</th>
+                        <th align="left">Definition</th>
+                        <th align="right">Count</th>
+                        <th align="right">Frequency</th>
+                        {/* <th>Distribution</th> */}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topicList &&
+                        topicList.map((t) => (
+                          <tr id={t} className={styles.row}>
+                            <td align="center">
+                              <input type="checkbox"></input>
+                            </td>
+                            <td align="left">{t}</td>
+                            <td align="left">{msgDefinitions.get(t)[0] ?? 'N/A'}</td>
+                            <td align="left">
+                              <span className={styles.msgDefinition} title={msgDefinitions.get(t)[3]}>
+                                {msgDefinitions.get(t)[1]}
+                              </span>
+                              <small className={styles.hash} title={msgDefinitions.get(t)[2]}>
+                                ({msgDefinitions.get(t)[2].slice(0, 8)})
+                              </small>
+                            </td>
+                            <td align="right">{topicCounter[t]}</td>
+                            <td align="right">
+                              {Math.round(topicCounter[t] / metaData.duration)}
+                              <small>Hz</small>
+                            </td>
+                            <Timeline></Timeline>
+                            {/* <td> */}
+                            {/* <div
                               style={{
                                 position: 'relative',
                                 height: `21px`,
@@ -218,20 +244,19 @@ const App = (props: any) => {
                                 backgroundColor: '#D3D3D3',
                               }}
                             >
-                              {topics_all[t].map((str) => (
+                              {topic_data_map[t].map((str) => (
                                 <i style={{ position: 'absolute', float: 'left', left: `${str * 0.08}px`, width: '0.08px', height: `20px`, backgroundColor: 'blue' }} />
                               ))}
                             </div> */}
-                          {/* </td> */}
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+                            {/* </td> */}
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </>
               )}
               {/*  */}
-              <div>
-                {/* <Timeline></Timeline> */}
-              </div>
+              <div>{/* <Timeline></Timeline> */}</div>
             </div>
           )}
         </>
