@@ -1,10 +1,11 @@
 import lz4 from 'lz4js'
 import prettyBytes from 'pretty-bytes'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { open, TimeUtil } from 'rosbag'
 import styles from './App.module.scss'
 import Timeline from './components/timeline'
+import { intersection } from 'lodash'
 import './table.css'
 
 import Select from 'react-select'
@@ -27,6 +28,7 @@ const App = (props: any) => {
 
   const [metaData, setMetaData] = useState<{ startTime: any; endTime: any; duration: number }>(undefined)
   const [topicList, setTopicList] = useState<string[]>([])
+  const [selectedTopicList, setSelectedTopicList] = useState<string[]>([])
 
   const [progress, setProgress] = useState<number>(0)
   const [msgDefinitions, setMsgDefinitions] = useState<Map<string, string[]>>(new Map())
@@ -120,6 +122,19 @@ const App = (props: any) => {
     setTopicList(Array.from(topics).sort())
   }
 
+  useEffect(() => {
+    const selected_topics = JSON.parse(localStorage.getItem('selected-topics')) || []
+    if (selected_topics && selected_topics.length && selected_topics.length > 0) {
+      setSelectedTopicList(selected_topics)
+    }
+  }, [])
+
+  const handleChange = (selected_options) => {
+    const selected_topics = selected_options.map((i) => i.value)
+    localStorage.setItem('selected-topics', JSON.stringify(selected_topics))
+    setSelectedTopicList(selected_topics)
+  }
+
   return (
     <div>
       <input type="file" accept=".bag" onChange={process} style={{ display: 'none' }}></input>
@@ -142,6 +157,14 @@ const App = (props: any) => {
                   <tr>
                     <th align="right">Name:</th>
                     <td>{name}</td>
+                  </tr>
+                  <tr>
+                    <th align="right">Type:</th>
+                    <td>mfbag | rosbag</td>
+                  </tr>
+                  <tr>
+                    <th align="right">MAF:</th>
+                    <td>3.1.0</td>
                   </tr>
                   <tr>
                     <th align="right">Size:</th>
@@ -180,29 +203,27 @@ const App = (props: any) => {
               {progress === 100 && (
                 <>
                   {topicList && (
-                    // <select>
-                    //   {topicList.map((t) => (
-                    //     <option value={t}>{t}</option>
-                    //   ))}
-                    // </select>
                     <Select
-                      //
-                      defaultValue={topicList.map((t)=>({value: t, label: t}))}
+                      // defaultValue={topicList.map((t) => ({ value: t, label: t }))}
+                      defaultValue={selectedTopicList.map((t) => ({ value: t, label: t }))}
                       isMulti
                       name="selected_topics"
-                      // options={topicList}
                       options={topicList.map((t) => ({ value: t, label: t }))}
                       className="basic-multi-select"
-                      // classNamePrefix="select"
+                      classNamePrefix="select"
+                      onChange={handleChange}
+                      placeholder="Filter Topic Name"
+                      blurInputOnSelect={false}
+                      closeMenuOnSelect={false}
                     />
                   )}
                   <table className={styles.topicsTable}>
                     <thead>
                       <tr>
-                        <th>
+                        {/* <th> */}
                           {/* indeterminate */}
-                          <input type="checkbox"></input>
-                        </th>
+                          {/* <input type="checkbox"></input> */}
+                        {/* </th> */}
                         <th align="left">Topic Name</th>
                         <th align="left">Caller</th>
                         <th align="left">Definition</th>
@@ -213,11 +234,11 @@ const App = (props: any) => {
                     </thead>
                     <tbody>
                       {topicList &&
-                        topicList.map((t) => (
+                        (selectedTopicList.length > 0 ? intersection(topicList, selectedTopicList) : topicList).map((t) => (
                           <tr id={t} className={styles.row}>
-                            <td align="center">
+                            {/* <td align="center">
                               <input type="checkbox"></input>
-                            </td>
+                            </td> */}
                             <td align="left">{t}</td>
                             <td align="left">{msgDefinitions.get(t)[0] ?? 'N/A'}</td>
                             <td align="left">
