@@ -134,6 +134,9 @@ const App = (props: any) => {
     setSelectedTopicList(selected_topics)
   }
 
+  const filteredMap = topicList && (selectedTopicList.length > 0 ? intersection(topicList, selectedTopicList) : topicList)
+  console.log(filteredMap)
+
   return (
     <div>
       <input type="file" accept=".bag, .mfbag" onChange={readBag} style={{ display: 'none' }}></input>
@@ -205,8 +208,7 @@ const App = (props: any) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {topicList &&
-                          (selectedTopicList.length > 0 ? intersection(topicList, selectedTopicList) : topicList).map((t) => (
+                        {filteredMap.map((t) => (
                             <tr id={t} className={styles.row}>
                               {/* <td align="center">
                               <input type="checkbox"></input>
