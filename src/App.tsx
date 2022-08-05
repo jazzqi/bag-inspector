@@ -9,14 +9,26 @@ import './table.css'
 
 import Select from 'react-select'
 import BagMeta from './components/bag-meta'
+import { Connection, SORT_BY, SORT_ORDINAL } from './types'
 
 let topic_data_map = {}
 
-const Arrow = (props: { direction: 'up' | 'down'; onClick: () => void }) => {
+const Arrow = (props: { ordinal: SORT_ORDINAL | undefined; onClick: () => void }) => {
   // ▶
-  const icon = props.direction === 'up' ? '⯅' : '⯆'
+  // const icon = props.ordinal === SORT_ORDINAL.DESC ? '⯅' : '⯆'
+  let ordinalStyle = ''
+
+  if (props.ordinal === SORT_ORDINAL.ASC) {
+    ordinalStyle = styles.asc
+  } else if (props.ordinal === SORT_ORDINAL.DESC) {
+    ordinalStyle = styles.desc
+  } else {
+    ordinalStyle = ''
+  }
+  //
+  const icon = '▶'
   return (
-    <a className={styles.arrow} href="##" onClick={props.onClick}>
+    <a className={`${styles.arrow} ${props.ordinal && styles.enableSort} ${ordinalStyle}`} href="##" onClick={props.onClick}>
       {icon}
     </a>
   )
@@ -29,19 +41,40 @@ const App = (props: any) => {
   }, [])
 
   const { getRootProps, getInputProps, isDragActive: isDragDropActivated } = useDropzone({ onDrop })
-  const [messageNumberCounter, setMessageNumberCounter] = useState<any>()
   const [isDragedFile, setIsDragedFile] = useState<boolean>(true)
   const [fileName, setFileName] = useState<string>('')
   const [fileSize, setFileSize] = useState<number>(0)
 
   const [bagMeta, setBagMeta] = useState<{ startTime: any; endTime: any; duration: number }>(undefined)
-  const [topicList, setTopicList] = useState<string[]>([])
   const [selectedTopicList, setSelectedTopicList] = useState<string[]>([])
 
   const [readProgress, setReadProgress] = useState<number>(0)
-  const [topicDefinitions, setTopicDefinitions] = useState<Map<string, string[]>>(new Map())
+  // const [topicDefinitions, setTopicDefinitions] = useState<Map<string, string[]>>(new Map())
 
   const [sortBy, setSortBy] = useState<SORT_BY | undefined>()
+
+  const setSort = useCallback(
+    (trigger: string) => {
+      if (sortBy && sortBy.by === trigger) {
+        if (sortBy.ordinal === SORT_ORDINAL.DESC) {
+          setSortBy(undefined)
+        } else if (sortBy.ordinal === SORT_ORDINAL.ASC) {
+          const newSortBy = { ...sortBy, ordinal: SORT_ORDINAL.DESC }
+          setSortBy(newSortBy)
+        } else {
+          setSortBy({ by: trigger, ordinal: SORT_ORDINAL.ASC })
+        }
+      } else {
+        const newSortBy = { by: trigger, ordinal: SORT_ORDINAL.ASC }
+        setSortBy(newSortBy)
+      }
+    },
+    [sortBy]
+  )
+
+  const [topicInfoList, setTopicInfoList] = useState<any[]>([])
+  const [messageNumberCounter, setMessageNumberCounter] = useState<any>({})
+  //
 
   const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -50,8 +83,8 @@ const App = (props: any) => {
 
   const clearState = () => {
     setIsDragedFile(false)
-    setTopicList([])
-    setTopicDefinitions(new Map())
+    setTopicInfoList([])
+    // setTopicDefinitions(new Map())
     topic_data_map = {}
   }
 
@@ -70,14 +103,29 @@ const App = (props: any) => {
     setFileName(files[0].name)
     setFileSize(files[0].size)
 
-    const topicMap = new Map<string, string[]>()
+    // const topicMap = new Map<string, string[]>()
+    const columns = [
+      // {topic_name, caller, definition, count, frequency},
+    ]
 
     Object.entries<Connection>(bag.connections).forEach(([_, v]) => {
-      topicMap.set(v.topic, [v.callerid, v.type, v.md5sum, v.messageDefinition])
+      // topicMap.set(v.topic, [v.callerid, v.type, v.md5sum, v.messageDefinition])
+      columns.push({
+        topic_name: v.topic,
+        caller: v.callerid,
+        md5: v.md5sum,
+        type: v.type,
+        definition: v.messageDefinition,
+        count: 0,
+        frequency: 0,
+      })
     })
-    setTopicDefinitions(topicMap)
+    // setTopicDefinitions(topicMap)
 
-    const topic_list = new Set<string>()
+    setTopicInfoList(columns)
+    // setTopicInfoList(Array.from(topic_list).sort())
+
+    // const topic_list = new Set<string>()
     const msg_number_counter = {}
 
     await bag.readMessages(
@@ -89,36 +137,36 @@ const App = (props: any) => {
       },
       (res) => {
         const { topic, chunkOffset, totalChunks, timestamp: msg_ts } = res
-        topic_list.add(topic)
         // 最高支持 100Hz 可视化分辨率
+
+        // topic_list.add(topic)
 
         // 取 500 HZ 的数据
         // (timestamp.sec - bag.startTime.sec) * 500  秒 * 500
         // ((timestamp.nsec - bag.startTime.nsec) / 2000000) 纳秒除以 500
-        let num = (msg_ts.sec - bag.startTime.sec) * 500 + parseInt(((msg_ts.nsec - bag.startTime.nsec) / 2000000) as any)
+        // let num = (msg_ts.sec - bag.startTime.sec) * 500 + parseInt(((msg_ts.nsec - bag.startTime.nsec) / 2000000) as any)
 
-        if (topic_data_map[topic]) {
-          let temp = topic_data_map[topic]
-          if (temp[temp.length - 1] !== num) {
-            temp.push(num)
-            topic_data_map[topic] = temp
-          }
-        } else {
-          topic_data_map[topic] = [num]
-        }
+        // if (topic_data_map[topic]) {
+        //   let temp = topic_data_map[topic]
+        //   if (temp[temp.length - 1] !== num) {
+        //     temp.push(num)
+        //     topic_data_map[topic] = temp
+        //   }
+        // } else {
+        //   topic_data_map[topic] = [num]
+        // }
 
-        topic_list.add(topic)
-        if (msg_number_counter[topic]) {
-          msg_number_counter[topic] = msg_number_counter[topic] + 1
-        } else {
-          msg_number_counter[topic] = 1
-        }
+        // topic_list.add(topic)
+        // if (msg_number_counter[topic]) {
+        //   msg_number_counter[topic] = msg_number_counter[topic] + 1
+        // } else {
+        //   msg_number_counter[topic] = 1
+        // }
 
         setReadProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
     setMessageNumberCounter(msg_number_counter)
-    setTopicList(Array.from(topic_list).sort())
   }
 
   useEffect(() => {
@@ -134,7 +182,14 @@ const App = (props: any) => {
     setSelectedTopicList(selected_topics)
   }
 
-  const filteredMap = topicList && (selectedTopicList.length > 0 ? intersection(topicList, selectedTopicList) : topicList)
+  // const filteredMap = topicInfoList && (selectedTopicList.length > 0 ? intersection(topicInfoList, selectedTopicList) : topicInfoList)
+  // console.log(filteredMap)
+  const filteredMap = topicInfoList.filter((i) => {
+    //
+    return selectedTopicList.includes(i.topic_name)
+  })
+
+
   console.log(filteredMap)
 
   return (
@@ -162,11 +217,11 @@ const App = (props: any) => {
                 )}
                 {readProgress === 100 && (
                   <>
-                    {topicList && (
+                    {topicInfoList && (
                       <Select
                         isMulti
                         name="selected_topics"
-                        options={topicList.map((t) => ({ value: t, label: t }))}
+                        options={topicInfoList.map((t) => ({ value: t, label: t }))}
                         defaultValue={selectedTopicList.map((t) => ({ value: t, label: t }))}
                         className="basic-multi-select"
                         classNamePrefix="select"
@@ -179,60 +234,79 @@ const App = (props: any) => {
                     <table className={styles.topicsTable}>
                       <thead>
                         <tr>
-                          {/* <th> */}
-                          {/* indeterminate */}
-                          {/* <input type="checkbox"></input> */}
-                          {/* </th> */}
                           <th align="left">
                             <Arrow
-                              direction="down"
+                              ordinal={sortBy?.by === 'topic_name' ? sortBy.ordinal : undefined}
                               onClick={() => {
-                                setSortBy({ by: 'topic_name', order: SORT_DIRECTION.DESC })
+                                // setSortBy({ by: 'topic_name', ordinal: SORT_ORDINAL.DESC })
+                                setSort('topic_name')
+                              }}
+                            />{' '}
+                            &nbsp; Topic Name
+                          </th>
+                          <th align="left">
+                            <Arrow
+                              ordinal={sortBy?.by === 'caller' ? sortBy.ordinal : undefined}
+                              onClick={() => {
+                                setSort('caller')
                               }}
                             />
-                            Topic Name
+                            &nbsp; Caller
                           </th>
                           <th align="left">
-                            <Arrow direction="up" onClick={() => {}} /> Caller
-                          </th>
-                          <th align="left">
-                            <Arrow direction="down" onClick={() => {}} /> Definition
+                            <Arrow
+                              ordinal={sortBy?.by === 'definition' ? sortBy.ordinal : undefined}
+                              onClick={() => {
+                                setSort('definition')
+                              }}
+                            />
+                            &nbsp; Definition
                           </th>
                           <th align="right">
-                            <Arrow direction="down" onClick={() => {}} /> Count
+                            <Arrow
+                              ordinal={sortBy?.by === 'count' ? sortBy.ordinal : undefined}
+                              onClick={() => {
+                                setSort('count')
+                              }}
+                            />
+                            &nbsp; Count
                           </th>
                           <th align="right">
-                            <Arrow direction="down" onClick={() => {}} /> Frequency
+                            <Arrow
+                              ordinal={sortBy?.by === 'frequency' ? sortBy.ordinal : undefined}
+                              onClick={() => {
+                                setSort('frequency')
+                              }}
+                            />
+                            &nbsp; Frequency
                           </th>
                           {/* <th>Distribution</th> */}
                         </tr>
                       </thead>
                       <tbody>
                         {filteredMap.map((t) => (
-                            <tr id={t} className={styles.row}>
-                              {/* <td align="center">
-                              <input type="checkbox"></input>
-                            </td> */}
-                              <td align="left">{t}</td>
-                              <td align="left">{topicDefinitions.get(t)[0] ?? 'N/A'}</td>
-                              <td align="left">
-                                <span className={styles.msgDefinition} title={topicDefinitions.get(t)[3]}>
-                                  {topicDefinitions.get(t)[1]}
-                                </span>
-                                <small className={styles.hash} title={topicDefinitions.get(t)[2]}>
-                                  ({topicDefinitions.get(t)[2].slice(0, 8)})
-                                </small>
-                              </td>
-                              <td align="right">{messageNumberCounter[t]}</td>
-                              <td align="right">
-                                {Math.round(messageNumberCounter[t] / bagMeta.duration)}
-                                <small>Hz</small>
-                              </td>
-                              <td align="right">
-                                <Timeline></Timeline>
-                              </td>
-                              {/* <td> */}
-                              {/* <div
+                          <tr id={t.topic_name} className={styles.row}>
+                            <td align="left">{t.topic_name}</td>
+                            <td align="left">{t.caller ?? 'N/A'}</td>
+                            <td align="left">
+                              <span className={styles.msgDefinition} title={t.definition}>
+                                {t.type}
+                              </span>
+                              <small className={styles.hash} title={t.md5}>
+                                ({t.md5.slice(0, 8)})
+                              </small>
+                            </td>
+                            <td align="right">
+                              {messageNumberCounter[t.topic_name]}</td>
+                            <td align="right">
+                              {Math.round(messageNumberCounter[t.topic_name] / bagMeta.duration)}
+                              <small>Hz</small>
+                            </td>
+                            <td align="right">
+                              <Timeline></Timeline>
+                            </td>
+                            {/* <td> */}
+                            {/* <div
                               style={{
                                 position: 'relative',
                                 height: `21px`,
@@ -245,9 +319,9 @@ const App = (props: any) => {
                                 <i style={{ position: 'absolute', float: 'left', left: `${str * 0.08}px`, width: '0.08px', height: `20px`, backgroundColor: 'blue' }} />
                               ))}
                             </div> */}
-                              {/* </td> */}
-                            </tr>
-                          ))}
+                            {/* </td> */}
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </>

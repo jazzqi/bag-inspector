@@ -16,7 +16,20 @@
 .arrow {
   font-style: normal;
   text-decoration: none;
+  position: relative;
+  display: inline-block;
+  color: #9c9c9c;
+}
+.enableSort {
   color: #3c3c3c;
+}
+
+.asc {
+  transform: rotate(90deg);
+}
+
+.desc {
+  transform: rotate(270deg);
 }
 
 .pd {
