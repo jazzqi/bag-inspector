@@ -13,24 +13,6 @@
   font-family: monospace;
 }
 
-.arrow {
-  font-style: normal;
-  text-decoration: none;
-  position: relative;
-  display: inline-block;
-  color: #9c9c9c;
-}
-.enableSort {
-  color: #3c3c3c;
-}
-
-.asc {
-  transform: rotate(90deg);
-}
-
-.desc {
-  transform: rotate(270deg);
-}
 
 .pd {
   padding: 1em;
@@ -63,7 +45,7 @@
 }
 
 .topicsTable {
-  width: 1000px;
+  // width: 1000px;
   max-height: 50vh;
   overflow-y: auto;
   line-height: 30px;

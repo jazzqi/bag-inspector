@@ -3,36 +3,16 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { open, TimeUtil } from 'rosbag'
 import styles from './App.module.scss'
-import Timeline from './components/timeline'
-import { intersection } from 'lodash'
+// import Timeline from './components/timeline'
+// import { intersection } from 'lodash'
 import './table.css'
 
 import Select from 'react-select'
 import BagMeta from './components/bag-meta'
 import { Connection, SORT_BY, SORT_ORDINAL } from './types'
+import { SortArrow } from './components/sort-arrow'
 
 let topic_data_map = {}
-
-const Arrow = (props: { ordinal: SORT_ORDINAL | undefined; onClick: () => void }) => {
-  // ▶
-  // const icon = props.ordinal === SORT_ORDINAL.DESC ? '⯅' : '⯆'
-  let ordinalStyle = ''
-
-  if (props.ordinal === SORT_ORDINAL.ASC) {
-    ordinalStyle = styles.asc
-  } else if (props.ordinal === SORT_ORDINAL.DESC) {
-    ordinalStyle = styles.desc
-  } else {
-    ordinalStyle = ''
-  }
-  //
-  const icon = '▶'
-  return (
-    <a className={`${styles.arrow} ${props.ordinal && styles.enableSort} ${ordinalStyle}`} href="##" onClick={props.onClick}>
-      {icon}
-    </a>
-  )
-}
 
 const App = (props: any) => {
   const onDrop = useCallback((acceptedFiles) => {
@@ -42,10 +22,17 @@ const App = (props: any) => {
 
   const { getRootProps, getInputProps, isDragActive: isDragDropActivated } = useDropzone({ onDrop })
   const [isDragedFile, setIsDragedFile] = useState<boolean>(true)
-  const [fileName, setFileName] = useState<string>('')
-  const [fileSize, setFileSize] = useState<number>(0)
 
-  const [bagMeta, setBagMeta] = useState<{ startTime: any; endTime: any; duration: number }>(undefined)
+  const [metainfo, setMetainfo] = useState<{
+    fileName: string
+    fileSize: number
+    startTime: any
+    endTime: any
+    duration: number
+    actualStartTime?: any
+    actualEndTime?: any
+    actualDuration?: number
+  }>(undefined)
   const [selectedTopicList, setSelectedTopicList] = useState<string[]>([])
 
   const [readProgress, setReadProgress] = useState<number>(0)
@@ -73,7 +60,7 @@ const App = (props: any) => {
   )
 
   const [topicInfoList, setTopicInfoList] = useState<any[]>([])
-  const [messageNumberCounter, setMessageNumberCounter] = useState<any>({})
+  const [messageCounter, setMessageCounter] = useState<any>({})
   //
 
   const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,19 +76,19 @@ const App = (props: any) => {
   }
 
   const parseContent = async (files) => {
-    console.log(files)
     clearState()
 
     if (files.length === 0) return
 
     const bag = await open(files[0])
-    setBagMeta({
-      startTime: bag.startTime,
-      endTime: bag.endTime,
+
+    setMetainfo({
+      fileName: files[0].name,
+      fileSize: files[0].size,
+      startTime: bag.startTime, // 名义起始时间戳
+      endTime: bag.endTime, // 名义起始时间戳
       duration: TimeUtil.compare(bag.endTime, bag.startTime),
     })
-    setFileName(files[0].name)
-    setFileSize(files[0].size)
 
     // const topicMap = new Map<string, string[]>()
     const columns = [
@@ -110,15 +97,22 @@ const App = (props: any) => {
 
     Object.entries<Connection>(bag.connections).forEach(([_, v]) => {
       // topicMap.set(v.topic, [v.callerid, v.type, v.md5sum, v.messageDefinition])
-      columns.push({
-        topic_name: v.topic,
-        caller: v.callerid,
-        md5: v.md5sum,
-        type: v.type,
-        definition: v.messageDefinition,
-        count: 0,
-        frequency: 0,
-      })
+      // console.log(v.topic)
+      // console.log(columns.find((i) => i.topic_name === v.topic))
+      if (!columns.find((i) => i.topic_name === v.topic)) {
+        columns.push({
+          topic_name: v.topic,
+          caller: v.callerid,
+          md5: v.md5sum,
+          md5_sliced: v.md5sum.slice(0, 8),
+          type: v.type,
+          definition: v.messageDefinition,
+          count: 0,
+          frequency: 0,
+        })
+      } else {
+        console.log('REPEATED TOPIC', v.topic)
+      }
     })
     // setTopicDefinitions(topicMap)
 
@@ -126,7 +120,12 @@ const App = (props: any) => {
     // setTopicInfoList(Array.from(topic_list).sort())
 
     // const topic_list = new Set<string>()
-    const msg_number_counter = {}
+    const msg_counter = {}
+
+    const actual_timespan = [
+      { sec: Date.now() * 2, nsec: 0 },
+      { sec: 1, nsec: 1 },
+    ]
 
     await bag.readMessages(
       {
@@ -136,9 +135,16 @@ const App = (props: any) => {
         },
       },
       (res) => {
-        const { topic, chunkOffset, totalChunks, timestamp: msg_ts } = res
-        // 最高支持 100Hz 可视化分辨率
+        const { topic, chunkOffset, totalChunks, timestamp: msg_timestamp } = res
 
+        if (TimeUtil.compare(msg_timestamp, actual_timespan[0]) < 0) {
+          actual_timespan[0] = msg_timestamp
+        }
+        if (TimeUtil.compare(msg_timestamp, actual_timespan[1]) > 0) {
+          actual_timespan[1] = msg_timestamp
+        }
+
+        // 最高支持 100Hz 可视化分辨率
         // topic_list.add(topic)
 
         // 取 500 HZ 的数据
@@ -157,18 +163,31 @@ const App = (props: any) => {
         // }
 
         // topic_list.add(topic)
-        // if (msg_number_counter[topic]) {
-        //   msg_number_counter[topic] = msg_number_counter[topic] + 1
-        // } else {
-        //   msg_number_counter[topic] = 1
-        // }
+        if (msg_counter[topic]) {
+          msg_counter[topic] = msg_counter[topic] + 1
+        } else {
+          msg_counter[topic] = 1
+        }
 
         setReadProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
-    setMessageNumberCounter(msg_number_counter)
+    setMessageCounter(msg_counter)
+    console.log(actual_timespan)
+
+    setMetainfo({
+      fileName: files[0].name,
+      fileSize: files[0].size,
+      startTime: bag.startTime, // 名义起始时间戳
+      endTime: bag.endTime, // 名义起始时间戳
+      duration: TimeUtil.compare(bag.endTime, bag.startTime),
+      actualStartTime: actual_timespan[0], // 实际起始时间戳
+      actualEndTime: actual_timespan[1], // 实际起始时间戳
+      actualDuration: TimeUtil.compare(actual_timespan[1], actual_timespan[0]),
+    })
   }
 
+  // 恢复 localstorage 中存储的 topics
   useEffect(() => {
     const selected_topics = JSON.parse(localStorage.getItem('selected-topics')) || []
     if (selected_topics && selected_topics.length && selected_topics.length > 0) {
@@ -182,15 +201,10 @@ const App = (props: any) => {
     setSelectedTopicList(selected_topics)
   }
 
-  // const filteredMap = topicInfoList && (selectedTopicList.length > 0 ? intersection(topicInfoList, selectedTopicList) : topicInfoList)
-  // console.log(filteredMap)
-  const filteredMap = topicInfoList.filter((i) => {
-    //
-    return selectedTopicList.includes(i.topic_name)
-  })
-
-
-  console.log(filteredMap)
+  let filteredMap = topicInfoList
+  if (selectedTopicList.length > 0) {
+    filteredMap = topicInfoList.filter((i) => selectedTopicList.includes(i.topic_name))
+  }
 
   return (
     <div>
@@ -202,11 +216,11 @@ const App = (props: any) => {
         </div>
       ) : (
         <>
-          {bagMeta && (
+          {metainfo && (
             <div className={styles.baginfo}>
               <hr />
               <div className={styles.pd}>
-                <BagMeta name={fileName} size={fileSize} startTime={bagMeta.startTime} endTime={bagMeta.endTime} duration={bagMeta.duration}></BagMeta>
+                <BagMeta metainfo={metainfo}></BagMeta>
               </div>
               <hr />
               <div className={styles.pd}>
@@ -221,7 +235,7 @@ const App = (props: any) => {
                       <Select
                         isMulti
                         name="selected_topics"
-                        options={topicInfoList.map((t) => ({ value: t, label: t }))}
+                        options={topicInfoList.map((t) => ({ value: t.topic_name, label: t.topic_name }))}
                         defaultValue={selectedTopicList.map((t) => ({ value: t, label: t }))}
                         className="basic-multi-select"
                         classNamePrefix="select"
@@ -235,7 +249,7 @@ const App = (props: any) => {
                       <thead>
                         <tr>
                           <th align="left">
-                            <Arrow
+                            <SortArrow
                               ordinal={sortBy?.by === 'topic_name' ? sortBy.ordinal : undefined}
                               onClick={() => {
                                 // setSortBy({ by: 'topic_name', ordinal: SORT_ORDINAL.DESC })
@@ -245,7 +259,7 @@ const App = (props: any) => {
                             &nbsp; Topic Name
                           </th>
                           <th align="left">
-                            <Arrow
+                            <SortArrow
                               ordinal={sortBy?.by === 'caller' ? sortBy.ordinal : undefined}
                               onClick={() => {
                                 setSort('caller')
@@ -254,7 +268,7 @@ const App = (props: any) => {
                             &nbsp; Caller
                           </th>
                           <th align="left">
-                            <Arrow
+                            <SortArrow
                               ordinal={sortBy?.by === 'definition' ? sortBy.ordinal : undefined}
                               onClick={() => {
                                 setSort('definition')
@@ -263,7 +277,7 @@ const App = (props: any) => {
                             &nbsp; Definition
                           </th>
                           <th align="right">
-                            <Arrow
+                            <SortArrow
                               ordinal={sortBy?.by === 'count' ? sortBy.ordinal : undefined}
                               onClick={() => {
                                 setSort('count')
@@ -272,7 +286,7 @@ const App = (props: any) => {
                             &nbsp; Count
                           </th>
                           <th align="right">
-                            <Arrow
+                            <SortArrow
                               ordinal={sortBy?.by === 'frequency' ? sortBy.ordinal : undefined}
                               onClick={() => {
                                 setSort('frequency')
@@ -285,7 +299,7 @@ const App = (props: any) => {
                       </thead>
                       <tbody>
                         {filteredMap.map((t) => (
-                          <tr id={t.topic_name} className={styles.row}>
+                          <tr key={t.topic_name} id={t.topic_name} className={styles.row}>
                             <td align="left">{t.topic_name}</td>
                             <td align="left">{t.caller ?? 'N/A'}</td>
                             <td align="left">
@@ -293,18 +307,15 @@ const App = (props: any) => {
                                 {t.type}
                               </span>
                               <small className={styles.hash} title={t.md5}>
-                                ({t.md5.slice(0, 8)})
+                                ({t.md5_sliced})
                               </small>
                             </td>
+                            <td align="right">{messageCounter[t.topic_name] || 0}</td>
                             <td align="right">
-                              {messageNumberCounter[t.topic_name]}</td>
-                            <td align="right">
-                              {Math.round(messageNumberCounter[t.topic_name] / bagMeta.duration)}
+                              {((messageCounter[t.topic_name] || 0) / metainfo.duration).toFixed(1)}
                               <small>Hz</small>
                             </td>
-                            <td align="right">
-                              <Timeline></Timeline>
-                            </td>
+                            <td align="right">{/* <Timeline></Timeline> */}</td>
                             {/* <td> */}
                             {/* <div
                               style={{
