@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { open, TimeUtil } from 'rosbag'
 import styles from './App.module.scss'
-// import Timeline from './components/timeline'
+import Timeline from './components/timeline-echarts'
 // import { intersection } from 'lodash'
 import './table.css'
 
@@ -11,6 +11,7 @@ import Select from 'react-select'
 import BagMeta from './components/bag-meta'
 import { Connection, SORT_BY, SORT_ORDINAL } from './types'
 import { SortArrow } from './components/sort-arrow'
+import { openDataURI } from './utils'
 
 let topic_data_map = {}
 
@@ -59,9 +60,13 @@ const App = (props: any) => {
     [sortBy]
   )
 
+  type COUNTER = { [key: string]: number }
+  type SERIES = Array<Array<number>>
+
   const [topicInfoList, setTopicInfoList] = useState<any[]>([])
-  const [messageCounter, setMessageCounter] = useState<any>({})
-  //
+  const [messageCounter, setMessageCounter] = useState<COUNTER>({})
+  const [messageArray, setMessageArray] = useState<Array<string>>([])
+  const [messageSeries, setMessageSeries] = useState<SERIES>([])
 
   const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -80,14 +85,14 @@ const App = (props: any) => {
 
     if (files.length === 0) return
 
-    const bag = await open(files[0])
+    const fileHandler = await open(files[0])
 
     setMetainfo({
       fileName: files[0].name,
       fileSize: files[0].size,
-      startTime: bag.startTime, // 名义起始时间戳
-      endTime: bag.endTime, // 名义起始时间戳
-      duration: TimeUtil.compare(bag.endTime, bag.startTime),
+      startTime: fileHandler.startTime, // 名义起始时间戳
+      endTime: fileHandler.endTime, // 名义起始时间戳
+      duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
     })
 
     // const topicMap = new Map<string, string[]>()
@@ -95,7 +100,11 @@ const App = (props: any) => {
       // {topic_name, caller, definition, count, frequency},
     ]
 
-    Object.entries<Connection>(bag.connections).forEach(([_, v]) => {
+    const msg_counter: COUNTER = {}
+    const msg_array: Array<string> = []
+    const msg_series: SERIES = []
+
+    Object.entries<Connection>(fileHandler.connections).forEach(([_, v]) => {
       // topicMap.set(v.topic, [v.callerid, v.type, v.md5sum, v.messageDefinition])
       // console.log(v.topic)
       // console.log(columns.find((i) => i.topic_name === v.topic))
@@ -110,6 +119,8 @@ const App = (props: any) => {
           count: 0,
           frequency: 0,
         })
+        msg_counter[v.topic] = 0
+        msg_array.push(v.topic)
       } else {
         console.log('REPEATED TOPIC', v.topic)
       }
@@ -120,14 +131,13 @@ const App = (props: any) => {
     // setTopicInfoList(Array.from(topic_list).sort())
 
     // const topic_list = new Set<string>()
-    const msg_counter = {}
 
     const actual_timespan = [
       { sec: Date.now() * 2, nsec: 0 },
       { sec: 1, nsec: 1 },
     ]
 
-    await bag.readMessages(
+    await fileHandler.readMessages(
       {
         noParse: true,
         decompress: {
@@ -163,24 +173,29 @@ const App = (props: any) => {
         // }
 
         // topic_list.add(topic)
-        if (msg_counter[topic]) {
-          msg_counter[topic] = msg_counter[topic] + 1
-        } else {
-          msg_counter[topic] = 1
+        msg_counter[topic] = msg_counter[topic] + 1
+
+        if (!topic.includes('/can')) {
+          const topic_index = msg_array.findIndex((i) => i === topic)
+          msg_series.push([topic_index, msg_timestamp.sec + msg_timestamp.nsec / 10e8, msg_timestamp.sec + msg_timestamp.nsec / 10e8])
         }
 
         setReadProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
     setMessageCounter(msg_counter)
+    setMessageArray(msg_array)
+    setMessageSeries(msg_series)
+
     console.log(actual_timespan)
+    console.log(msg_series)
 
     setMetainfo({
       fileName: files[0].name,
       fileSize: files[0].size,
-      startTime: bag.startTime, // 名义起始时间戳
-      endTime: bag.endTime, // 名义起始时间戳
-      duration: TimeUtil.compare(bag.endTime, bag.startTime),
+      startTime: fileHandler.startTime, // 名义起始时间戳
+      endTime: fileHandler.endTime, // 名义起始时间戳
+      duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
       actualStartTime: actual_timespan[0], // 实际起始时间戳
       actualEndTime: actual_timespan[1], // 实际起始时间戳
       actualDuration: TimeUtil.compare(actual_timespan[1], actual_timespan[0]),
@@ -258,15 +273,7 @@ const App = (props: any) => {
                             />{' '}
                             &nbsp; Topic Name
                           </th>
-                          <th align="left">
-                            <SortArrow
-                              ordinal={sortBy?.by === 'caller' ? sortBy.ordinal : undefined}
-                              onClick={() => {
-                                setSort('caller')
-                              }}
-                            />
-                            &nbsp; Caller
-                          </th>
+
                           <th align="left">
                             <SortArrow
                               ordinal={sortBy?.by === 'definition' ? sortBy.ordinal : undefined}
@@ -275,6 +282,15 @@ const App = (props: any) => {
                               }}
                             />
                             &nbsp; Definition
+                          </th>
+                          <th align="left">
+                            <SortArrow
+                              ordinal={sortBy?.by === 'caller' ? sortBy.ordinal : undefined}
+                              onClick={() => {
+                                setSort('caller')
+                              }}
+                            />
+                            &nbsp; Caller
                           </th>
                           <th align="right">
                             <SortArrow
@@ -298,18 +314,27 @@ const App = (props: any) => {
                         </tr>
                       </thead>
                       <tbody>
+                        {/* sort((a,b)=> a[sortBy] > b[sortBy]) */}
                         {filteredMap.map((t) => (
                           <tr key={t.topic_name} id={t.topic_name} className={styles.row}>
                             <td align="left">{t.topic_name}</td>
-                            <td align="left">{t.caller ?? 'N/A'}</td>
                             <td align="left">
-                              <span className={styles.msgDefinition} title={t.definition}>
+                              {/* <a href={`data::text/plain;charset=utf-8,${encodeURIComponent(t.definition)}`} target={`_blank_{t.topic_name}`} rel="noreferrer"> */}
+                              <a
+                                href="###"
+                                onClick={() => {
+                                  openDataURI(t.type, `data::text/plain;charset=utf-8,${encodeURIComponent(t.definition)}`)
+                                }}
+                                title="Click to see raw definition"
+                              >
                                 {t.type}
-                              </span>
+                              </a>
+                              &nbsp;
                               <small className={styles.hash} title={t.md5}>
-                                ({t.md5_sliced})
+                                {t.md5_sliced}
                               </small>
                             </td>
+                            <td align="left">{t.caller ?? 'N/A'}</td>
                             <td align="right">{messageCounter[t.topic_name] || 0}</td>
                             <td align="right">
                               {((messageCounter[t.topic_name] || 0) / metainfo.duration).toFixed(1)}
@@ -342,6 +367,9 @@ const App = (props: any) => {
           )}
         </>
       )}
+
+      {/* Timeline Component */}
+      {readProgress === 100 ? <Timeline messageCounter={messageCounter} messageSeries={messageSeries} messageArray={messageArray}></Timeline> : null}
     </div>
   )
 }
