@@ -11,7 +11,7 @@ import Select from 'react-select'
 import BagMeta from './components/bag-meta'
 import { Connection, SORT_BY, SORT_ORDINAL } from './types'
 import { SortArrow } from './components/sort-arrow'
-import { openDataURI } from './utils'
+import { calculateTimestamp, convertTimestampToMillisecond, openDataURI } from './utils'
 
 let topic_data_map = {}
 
@@ -61,12 +61,13 @@ const App = (props: any) => {
   )
 
   type COUNTER = { [key: string]: number }
-  type SERIES = Array<Array<number>>
+  // type SERIES = Array<Uint32Array>
+  type SERIES = Uint32Array
 
   const [topicInfoList, setTopicInfoList] = useState<any[]>([])
   const [messageCounter, setMessageCounter] = useState<COUNTER>({})
   const [messageArray, setMessageArray] = useState<Array<string>>([])
-  const [messageSeries, setMessageSeries] = useState<SERIES>([])
+  const [messageSeries, setMessageSeries] = useState<SERIES>(new Uint32Array())
 
   const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -101,13 +102,10 @@ const App = (props: any) => {
     ]
 
     const msg_counter: COUNTER = {}
-    const msg_array: Array<string> = []
-    const msg_series: SERIES = []
+    let msg_array: Array<string> = []
+    const msg_series: Array<number> = []
 
     Object.entries<Connection>(fileHandler.connections).forEach(([_, v]) => {
-      // topicMap.set(v.topic, [v.callerid, v.type, v.md5sum, v.messageDefinition])
-      // console.log(v.topic)
-      // console.log(columns.find((i) => i.topic_name === v.topic))
       if (!columns.find((i) => i.topic_name === v.topic)) {
         columns.push({
           topic_name: v.topic,
@@ -125,17 +123,16 @@ const App = (props: any) => {
         console.log('REPEATED TOPIC', v.topic)
       }
     })
-    // setTopicDefinitions(topicMap)
 
     setTopicInfoList(columns)
-    // setTopicInfoList(Array.from(topic_list).sort())
-
-    // const topic_list = new Set<string>()
 
     const actual_timespan = [
       { sec: Date.now() * 2, nsec: 0 },
       { sec: 1, nsec: 1 },
     ]
+
+    msg_array = msg_array.sort()
+    console.log(msg_array)
 
     await fileHandler.readMessages(
       {
@@ -154,41 +151,23 @@ const App = (props: any) => {
           actual_timespan[1] = msg_timestamp
         }
 
-        // 最高支持 100Hz 可视化分辨率
-        // topic_list.add(topic)
-
-        // 取 500 HZ 的数据
-        // (timestamp.sec - bag.startTime.sec) * 500  秒 * 500
-        // ((timestamp.nsec - bag.startTime.nsec) / 2000000) 纳秒除以 500
-        // let num = (msg_ts.sec - bag.startTime.sec) * 500 + parseInt(((msg_ts.nsec - bag.startTime.nsec) / 2000000) as any)
-
-        // if (topic_data_map[topic]) {
-        //   let temp = topic_data_map[topic]
-        //   if (temp[temp.length - 1] !== num) {
-        //     temp.push(num)
-        //     topic_data_map[topic] = temp
-        //   }
-        // } else {
-        //   topic_data_map[topic] = [num]
-        // }
-
-        // topic_list.add(topic)
         msg_counter[topic] = msg_counter[topic] + 1
 
-        if (!topic.includes('/can')) {
-          const topic_index = msg_array.findIndex((i) => i === topic)
-          msg_series.push([topic_index, msg_timestamp.sec + msg_timestamp.nsec / 10e8, msg_timestamp.sec + msg_timestamp.nsec / 10e8])
-        }
+        const relative_timestamp = calculateTimestamp(actual_timespan[0], msg_timestamp)
+        const relative_timestamp_ms = convertTimestampToMillisecond(relative_timestamp)
+
+        const topic_index = msg_array.findIndex((i) => i === topic)
+        msg_series.push(topic_index, relative_timestamp_ms)
 
         setReadProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
     setMessageCounter(msg_counter)
     setMessageArray(msg_array)
-    setMessageSeries(msg_series)
+    setMessageSeries(new Uint32Array(msg_series))
 
-    console.log(actual_timespan)
-    console.log(msg_series)
+    // console.log(actual_timespan)
+    // console.log(msg_series)
 
     setMetainfo({
       fileName: files[0].name,
@@ -369,7 +348,7 @@ const App = (props: any) => {
       )}
 
       {/* Timeline Component */}
-      {readProgress === 100 ? <Timeline messageCounter={messageCounter} messageSeries={messageSeries} messageArray={messageArray}></Timeline> : null}
+      {readProgress === 100 ? <Timeline messageSeries={messageSeries} messageArray={messageArray}></Timeline> : null}
     </div>
   )
 }
