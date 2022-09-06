@@ -131,8 +131,7 @@ const App = (props: any) => {
       { sec: 1, nsec: 1 },
     ]
 
-    msg_array = msg_array.sort()
-    console.log(msg_array)
+    msg_array.sort()
 
     await fileHandler.readMessages(
       {
@@ -157,11 +156,13 @@ const App = (props: any) => {
         const relative_timestamp_ms = convertTimestampToMillisecond(relative_timestamp)
 
         const topic_index = msg_array.findIndex((i) => i === topic)
+        // console.log(topic_index, topic)
         msg_series.push(topic_index, relative_timestamp_ms)
 
         setReadProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
+    console.log(msg_array)
     setMessageCounter(msg_counter)
     setMessageArray(msg_array)
     setMessageSeries(new Uint32Array(msg_series))

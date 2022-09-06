@@ -14,11 +14,9 @@ class Timeline extends Component<{ messageSeries: any; messageArray: any }> {
     //   return new Uint32Array([i[0], i[1]]) // topic, ts
     // })
 
-    const data = this.props.messageSeries
-    const max_timestamp = data[data.length - 1]
+    const max_timestamp = this.props.messageSeries[this.props.messageSeries.length - 1]
 
     const data_size = this.props.messageArray.length
-    console.log(data)
 
     const xAxis = {
       position: 'bottom',
@@ -50,8 +48,9 @@ class Timeline extends Component<{ messageSeries: any; messageArray: any }> {
           if (p.length > 0) {
             return null
           } else {
-            const [topic, ts] = p.data
-            return `${this.props.messageArray[topic]}<br/><b>${ts}ms</b>`
+            const [_, ts] = p.data
+            const name = p.name
+            return `${name} ${ts} ${this.props.messageArray[name]}<br/><b>${ts}ms</b>`
           }
         },
       },
@@ -64,6 +63,7 @@ class Timeline extends Component<{ messageSeries: any; messageArray: any }> {
       xAxis: [xAxis, xAxis2],
       yAxis: {
         type: 'category',
+        inverse: true,
         axisTick: { alignWithLabel: true },
         splitArea: { show: true },
         axisPointer: {
@@ -93,16 +93,14 @@ class Timeline extends Component<{ messageSeries: any; messageArray: any }> {
           symbol: 'rect',
           large: true,
           symbolSize: [1, 18],
-          data: data,
+          data: this.props.messageSeries,
           dimensions: [
-            { name: 'topic' , type: 'int' },
+            { name: 'topic_index', type: 'int' },
             { name: 'timestamp', type: 'int' },
           ],
           encode: {
-            y: 'topic',
             x: 'timestamp',
-            tooltip: ['topic', 'timestamp'],
-            itemName: 'topic',
+            y: 'topic_index',
           },
           itemStyle: {
             color: '#77bef7',
