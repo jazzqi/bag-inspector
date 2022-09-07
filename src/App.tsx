@@ -4,6 +4,8 @@ import { useDropzone } from 'react-dropzone'
 import { open, TimeUtil } from 'rosbag'
 import styles from './App.module.scss'
 import Timeline from './components/timeline-echarts'
+import Switch from 'react-switch'
+
 // import { intersection } from 'lodash'
 import './table.css'
 
@@ -196,18 +198,18 @@ const App = (props: any) => {
   }
 
   // if change anything like topics update the value
-  // 
+  //
 
   return (
     <div>
       <input type="file" accept=".bag, .mfbag" onChange={readBag} style={{ display: 'none' }}></input>
-      <input
-        type="checkbox"
-        value="showwheat"
-        onClick={() => {
+      <Switch
+        onChange={() => {
           setToggle(!toggle)
         }}
+        checked={toggle}
       />
+
       {isDragedFile ? (
         <div {...getRootProps()} className={`${styles.dragdrop} ${isDragDropActivated && styles.activated}`}>
           <input {...getInputProps()} onChange={readBag} />
