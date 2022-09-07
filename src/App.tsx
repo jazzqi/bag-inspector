@@ -13,8 +13,6 @@ import { Connection, SORT_BY, SORT_ORDINAL } from './types'
 import { SortArrow } from './components/sort-arrow'
 import { calculateTimestamp, convertTimestampToMillisecond, openDataURI } from './utils'
 
-let topic_data_map = {}
-
 const App = (props: any) => {
   const onDrop = useCallback((acceptedFiles) => {
     const files = acceptedFiles
@@ -66,8 +64,9 @@ const App = (props: any) => {
 
   const [topicInfoList, setTopicInfoList] = useState<any[]>([])
   const [messageCounter, setMessageCounter] = useState<COUNTER>({})
-  const [messageArray, setMessageArray] = useState<Array<string>>([])
+  const [topicArray, setTopicArray] = useState<Array<string>>([])
   const [messageSeries, setMessageSeries] = useState<SERIES>(new Uint32Array())
+  const [toggle, setToggle] = useState<boolean>(true)
 
   const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -78,7 +77,6 @@ const App = (props: any) => {
     setIsDragedFile(false)
     setTopicInfoList([])
     // setTopicDefinitions(new Map())
-    topic_data_map = {}
   }
 
   const parseContent = async (files) => {
@@ -102,7 +100,7 @@ const App = (props: any) => {
     ]
 
     const msg_counter: COUNTER = {}
-    let msg_array: Array<string> = []
+    let topic_array: Array<string> = []
     const msg_series: Array<number> = []
 
     Object.entries<Connection>(fileHandler.connections).forEach(([_, v]) => {
@@ -118,7 +116,7 @@ const App = (props: any) => {
           frequency: 0,
         })
         msg_counter[v.topic] = 0
-        msg_array.push(v.topic)
+        topic_array.push(v.topic)
       } else {
         console.log('REPEATED TOPIC', v.topic)
       }
@@ -131,7 +129,7 @@ const App = (props: any) => {
       { sec: 1, nsec: 1 },
     ]
 
-    msg_array.sort()
+    topic_array.sort()
 
     await fileHandler.readMessages(
       {
@@ -155,21 +153,17 @@ const App = (props: any) => {
         const relative_timestamp = calculateTimestamp(actual_timespan[0], msg_timestamp)
         const relative_timestamp_ms = convertTimestampToMillisecond(relative_timestamp)
 
-        const topic_index = msg_array.findIndex((i) => i === topic)
+        const topic_index = topic_array.findIndex((i) => i === topic)
         // console.log(topic_index, topic)
         msg_series.push(topic_index, relative_timestamp_ms)
 
         setReadProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
-    console.log(msg_array)
+    console.log(topic_array)
     setMessageCounter(msg_counter)
-    setMessageArray(msg_array)
+    setTopicArray(topic_array)
     setMessageSeries(new Uint32Array(msg_series))
-
-    // console.log(actual_timespan)
-    // console.log(msg_series)
-
     setMetainfo({
       fileName: files[0].name,
       fileSize: files[0].size,
@@ -201,9 +195,19 @@ const App = (props: any) => {
     filteredMap = topicInfoList.filter((i) => selectedTopicList.includes(i.topic_name))
   }
 
+  // if change anything like topics update the value
+  // 
+
   return (
     <div>
       <input type="file" accept=".bag, .mfbag" onChange={readBag} style={{ display: 'none' }}></input>
+      <input
+        type="checkbox"
+        value="showwheat"
+        onClick={() => {
+          setToggle(!toggle)
+        }}
+      />
       {isDragedFile ? (
         <div {...getRootProps()} className={`${styles.dragdrop} ${isDragDropActivated && styles.activated}`}>
           <input {...getInputProps()} onChange={readBag} />
@@ -224,7 +228,7 @@ const App = (props: any) => {
                     <em>{readProgress}%</em>
                   </div>
                 )}
-                {readProgress === 100 && (
+                {readProgress === 100 && toggle && (
                   <>
                     {topicInfoList && (
                       <Select
@@ -247,7 +251,6 @@ const App = (props: any) => {
                             <SortArrow
                               ordinal={sortBy?.by === 'topic_name' ? sortBy.ordinal : undefined}
                               onClick={() => {
-                                // setSortBy({ by: 'topic_name', ordinal: SORT_ORDINAL.DESC })
                                 setSort('topic_name')
                               }}
                             />{' '}
@@ -320,36 +323,20 @@ const App = (props: any) => {
                               {((messageCounter[t.topic_name] || 0) / metainfo.duration).toFixed(1)}
                               <small>Hz</small>
                             </td>
-                            <td align="right">{/* <Timeline></Timeline> */}</td>
-                            {/* <td> */}
-                            {/* <div
-                              style={{
-                                position: 'relative',
-                                height: `21px`,
-                                marginRight: '400px',
-                                width: `${tpoicSum * 0.08}px`,
-                                backgroundColor: '#D3D3D3',
-                              }}
-                            >
-                              {topic_data_map[t].map((str) => (
-                                <i style={{ position: 'absolute', float: 'left', left: `${str * 0.08}px`, width: '0.08px', height: `20px`, backgroundColor: 'blue' }} />
-                              ))}
-                            </div> */}
-                            {/* </td> */}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </>
                 )}
+
+                {/* Timeline Component */}
+                {readProgress === 100 && !toggle ? <Timeline messageSeries={messageSeries} topicArray={topicArray}></Timeline> : null}
               </div>
             </div>
           )}
         </>
       )}
-
-      {/* Timeline Component */}
-      {readProgress === 100 ? <Timeline messageSeries={messageSeries} messageArray={messageArray}></Timeline> : null}
     </div>
   )
 }

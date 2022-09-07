@@ -2,21 +2,11 @@ import React, { Component } from 'react'
 import 'echarts-gl'
 import ReactEcharts from 'echarts-for-react'
 
-class Timeline extends Component<{ messageSeries: any; messageArray: any }> {
+class Timeline extends Component<{ messageSeries: any; topicArray: any }> {
   getOption = () => {
-    // let count = 1000
-    // while (count > 0) {
-    //   data.push(['sample', Math.random() * 500, Math.random() * 1000])
-    //   count--
-    // }
-
-    // const data = this.props.messageSeries.map((i) => {
-    //   return new Uint32Array([i[0], i[1]]) // topic, ts
-    // })
-
     const max_timestamp = this.props.messageSeries[this.props.messageSeries.length - 1]
 
-    const data_size = this.props.messageArray.length
+    const y_size = this.props.topicArray.length
 
     const xAxis = {
       position: 'bottom',
@@ -48,13 +38,18 @@ class Timeline extends Component<{ messageSeries: any; messageArray: any }> {
           if (p.length > 0) {
             return null
           } else {
-            const [_, ts] = p.data
+            const [, ts] = p.data
             const name = p.name
-            return `${name} ${ts} ${this.props.messageArray[name]}<br/><b>${ts}ms</b>`
+            return `${this.props.topicArray[name]}<br/><b>${ts}ms</b>`
           }
         },
       },
-      dataZoom: [{ type: 'slider', top: 'auto' }, { type: 'slider', id: '12', bottom: 'auto' }, { type: 'inside' }],
+      dataZoom: [
+        //
+        { type: 'slider', id: '11', top: 'auto', labelFormatter: '{value}ms', showDataShadow: false },
+        { type: 'slider', id: '12', bottom: 'auto', labelFormatter: '{value}ms', showDataShadow: false },
+        { type: 'inside' },
+      ],
       grid: {
         bottom: 75,
         top: 75,
@@ -66,6 +61,7 @@ class Timeline extends Component<{ messageSeries: any; messageArray: any }> {
         inverse: true,
         axisTick: { alignWithLabel: true },
         splitArea: { show: true },
+        axisLine: { show: false, lineStyle: { color: '#eaeaea' } },
         axisPointer: {
           show: true,
           type: 'shadow',
@@ -81,10 +77,9 @@ class Timeline extends Component<{ messageSeries: any; messageArray: any }> {
           fontFamily: 'monospace',
           fontSize: '11',
           color: 'black',
-          formatter: (i) => this.props.messageArray[i],
           inside: false,
+          formatter: (i) => this.props.topicArray[i],
         },
-        // data: data,
       },
       series: [
         {
@@ -110,14 +105,15 @@ class Timeline extends Component<{ messageSeries: any; messageArray: any }> {
       ],
     }
     return {
-      data_size,
+      y_size,
       option,
     }
   }
 
   render() {
-    const { option, data_size } = this.getOption()
-    return <ReactEcharts option={option} style={{ height: `${data_size * 30 + 150}px`, left: 20, top: 20, width: '90vw', background: 'white' }} opts={{ renderer: 'canvas' }} />
+    const { option, y_size } = this.getOption()
+    const height = y_size * 30 + 150
+    return <ReactEcharts option={option} style={{ height: `${height}px`, left: 20, top: 20, bottom: 20, width: '90vw', background: 'white' }} opts={{ renderer: 'canvas' }} />
   }
 }
 
