@@ -204,6 +204,10 @@ const App = (props: any) => {
     <div>
       <input type="file" accept=".bag, .mfbag" onChange={readBag} style={{ display: 'none' }}></input>
       <Switch
+        height={14}
+        handleDiameter={12}
+        uncheckedIcon={false}
+        checkedIcon={true}
         onChange={() => {
           setToggle(!toggle)
         }}
