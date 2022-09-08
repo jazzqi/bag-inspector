@@ -39,8 +39,6 @@ const App = (props: any) => {
   const [readProgress, setReadProgress] = useState<number>(0)
   // const [topicDefinitions, setTopicDefinitions] = useState<Map<string, string[]>>(new Map())
 
-
-
   type COUNTER = { [key: string]: number }
   // type SERIES = Array<Uint32Array>
   type SERIES = Uint32Array
@@ -77,12 +75,24 @@ const App = (props: any) => {
       duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
     })
 
+    /**
+     * Table 内容
+     */
     const table_columns = [
       // {topic_name, caller, definition, count, frequency},
     ]
 
+    /**
+     * 消息数量
+     */
     const msg_counter: COUNTER = {}
+    /**
+     * Topic 列表
+     */
     let topic_array: Array<string> = []
+    /**
+     * 消息时序
+     */
     const msg_series: Array<number> = []
 
     Object.entries<Connection>(fileHandler.connections).forEach(([_, v]) => {
@@ -141,6 +151,9 @@ const App = (props: any) => {
         setReadProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
+
+    console.log(msg_counter)
+
     setMessageCounter(msg_counter)
     setTopicArray(topic_array)
     setMessageSeries(new Uint32Array(msg_series))
@@ -183,16 +196,6 @@ const App = (props: any) => {
   return (
     <div>
       <input type="file" accept=".bag, .mfbag" onChange={readBag} style={{ display: 'none' }}></input>
-      <Switch
-        height={14}
-        handleDiameter={12}
-        uncheckedIcon={false}
-        checkedIcon={true}
-        onChange={() => {
-          setToggle(!toggle)
-        }}
-        checked={toggle}
-      />
 
       {isDragedFile ? (
         <div {...getRootProps()} className={`${styles.dragdrop} ${isDragDropActivated && styles.activated}`}>
@@ -204,6 +207,24 @@ const App = (props: any) => {
           {metainfo && (
             <div className={styles.baginfo}>
               <hr />
+              {readProgress === 100 && (
+                <>
+                  <label className={styles.switch}>
+                    <Switch
+                      height={14}
+                      width={28}
+                      handleDiameter={12}
+                      uncheckedIcon={false}
+                      checkedIcon={true}
+                      onChange={() => {
+                        setToggle(!toggle)
+                      }}
+                      checked={!toggle}
+                    />
+                    <span> Timeline Mode</span>
+                  </label>
+                </>
+              )}
               <div className={styles.pd}>
                 <BagMeta metainfo={metainfo}></BagMeta>
               </div>
@@ -214,6 +235,7 @@ const App = (props: any) => {
                     <em>{readProgress}%</em>
                   </div>
                 )}
+
                 {readProgress === 100 && toggle && (
                   <>
                     {topicInfoList && (
@@ -231,7 +253,7 @@ const App = (props: any) => {
                       />
                     )}
 
-                    <Table messageCouner={messageCounter}  filteredMap={filteredMap}  metainfo={metainfo}></Table>
+                    <Table messageCounter={messageCounter} filteredMap={filteredMap} metainfo={metainfo}></Table>
                   </>
                 )}
 

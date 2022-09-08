@@ -13,6 +13,16 @@
   font-family: monospace;
 }
 
+.switch {
+  float: right;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  span {
+    padding: 0 1em;
+  }
+}
 
 .pd {
   padding: 1em;
@@ -51,7 +61,7 @@
   line-height: 30px;
 
   // tr:hover {
-    // background: #48cae4;
+  // background: #48cae4;
   // }
 
   .row {
