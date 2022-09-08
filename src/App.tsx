@@ -1,19 +1,19 @@
 import lz4 from 'lz4js'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
+import Switch from 'react-switch'
 import { open, TimeUtil } from 'rosbag'
 import styles from './App.module.scss'
 import Timeline from './components/timeline-echarts'
-import Switch from 'react-switch'
 
 // import { intersection } from 'lodash'
 import './table.css'
 
 import Select from 'react-select'
 import BagMeta from './components/bag-meta'
-import { Connection, SORT_BY, SORT_ORDINAL } from './types'
-import { SortArrow } from './components/sort-arrow'
-import { calculateTimestamp, convertTimestampToMillisecond, openDataURI } from './utils'
+import { Table } from './components/table'
+import { Connection } from './types'
+import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
 
 const App = (props: any) => {
   const onDrop = useCallback((acceptedFiles) => {
@@ -39,26 +39,7 @@ const App = (props: any) => {
   const [readProgress, setReadProgress] = useState<number>(0)
   // const [topicDefinitions, setTopicDefinitions] = useState<Map<string, string[]>>(new Map())
 
-  const [sortBy, setSortBy] = useState<SORT_BY | undefined>()
 
-  const setSort = useCallback(
-    (trigger: string) => {
-      if (sortBy && sortBy.by === trigger) {
-        if (sortBy.ordinal === SORT_ORDINAL.DESC) {
-          setSortBy(undefined)
-        } else if (sortBy.ordinal === SORT_ORDINAL.ASC) {
-          const newSortBy = { ...sortBy, ordinal: SORT_ORDINAL.DESC }
-          setSortBy(newSortBy)
-        } else {
-          setSortBy({ by: trigger, ordinal: SORT_ORDINAL.ASC })
-        }
-      } else {
-        const newSortBy = { by: trigger, ordinal: SORT_ORDINAL.ASC }
-        setSortBy(newSortBy)
-      }
-    },
-    [sortBy]
-  )
 
   type COUNTER = { [key: string]: number }
   // type SERIES = Array<Uint32Array>
@@ -96,8 +77,7 @@ const App = (props: any) => {
       duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
     })
 
-    // const topicMap = new Map<string, string[]>()
-    const columns = [
+    const table_columns = [
       // {topic_name, caller, definition, count, frequency},
     ]
 
@@ -106,8 +86,8 @@ const App = (props: any) => {
     const msg_series: Array<number> = []
 
     Object.entries<Connection>(fileHandler.connections).forEach(([_, v]) => {
-      if (!columns.find((i) => i.topic_name === v.topic)) {
-        columns.push({
+      if (!table_columns.find((i) => i.topic_name === v.topic)) {
+        table_columns.push({
           topic_name: v.topic,
           caller: v.callerid,
           md5: v.md5sum,
@@ -124,7 +104,7 @@ const App = (props: any) => {
       }
     })
 
-    setTopicInfoList(columns)
+    setTopicInfoList(table_columns)
 
     const actual_timespan = [
       { sec: Date.now() * 2, nsec: 0 },
@@ -156,13 +136,11 @@ const App = (props: any) => {
         const relative_timestamp_ms = convertTimestampToMillisecond(relative_timestamp)
 
         const topic_index = topic_array.findIndex((i) => i === topic)
-        // console.log(topic_index, topic)
         msg_series.push(topic_index, relative_timestamp_ms)
 
         setReadProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
-    console.log(topic_array)
     setMessageCounter(msg_counter)
     setTopicArray(topic_array)
     setMessageSeries(new Uint32Array(msg_series))
@@ -176,6 +154,8 @@ const App = (props: any) => {
       actualEndTime: actual_timespan[1], // 实际起始时间戳
       actualDuration: TimeUtil.compare(actual_timespan[1], actual_timespan[0]),
     })
+
+    console.log(topic_array)
   }
 
   // 恢复 localstorage 中存储的 topics
@@ -217,7 +197,7 @@ const App = (props: any) => {
       {isDragedFile ? (
         <div {...getRootProps()} className={`${styles.dragdrop} ${isDragDropActivated && styles.activated}`}>
           <input {...getInputProps()} onChange={readBag} />
-          {isDragDropActivated ? <div>可以</div> : <div>拖入 rosbag 文件</div>}
+          {isDragDropActivated ? <div></div> : <div>拖入 rosbag 文件</div>}
         </div>
       ) : (
         <>
@@ -250,89 +230,8 @@ const App = (props: any) => {
                         closeMenuOnSelect={false}
                       />
                     )}
-                    <table className={styles.topicsTable}>
-                      <thead>
-                        <tr>
-                          <th align="left">
-                            <SortArrow
-                              ordinal={sortBy?.by === 'topic_name' ? sortBy.ordinal : undefined}
-                              onClick={() => {
-                                setSort('topic_name')
-                              }}
-                            />{' '}
-                            &nbsp; Topic Name
-                          </th>
 
-                          <th align="left">
-                            <SortArrow
-                              ordinal={sortBy?.by === 'definition' ? sortBy.ordinal : undefined}
-                              onClick={() => {
-                                setSort('definition')
-                              }}
-                            />
-                            &nbsp; Definition
-                          </th>
-                          <th align="left">
-                            <SortArrow
-                              ordinal={sortBy?.by === 'caller' ? sortBy.ordinal : undefined}
-                              onClick={() => {
-                                setSort('caller')
-                              }}
-                            />
-                            &nbsp; Caller
-                          </th>
-                          <th align="right">
-                            <SortArrow
-                              ordinal={sortBy?.by === 'count' ? sortBy.ordinal : undefined}
-                              onClick={() => {
-                                setSort('count')
-                              }}
-                            />
-                            &nbsp; Count
-                          </th>
-                          <th align="right">
-                            <SortArrow
-                              ordinal={sortBy?.by === 'frequency' ? sortBy.ordinal : undefined}
-                              onClick={() => {
-                                setSort('frequency')
-                              }}
-                            />
-                            &nbsp; Frequency
-                          </th>
-                          {/* <th>Distribution</th> */}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {/* sort((a,b)=> a[sortBy] > b[sortBy]) */}
-                        {filteredMap.map((t) => (
-                          <tr key={t.topic_name} id={t.topic_name} className={styles.row}>
-                            <td align="left">{t.topic_name}</td>
-                            <td align="left">
-                              {/* <a href={`data::text/plain;charset=utf-8,${encodeURIComponent(t.definition)}`} target={`_blank_{t.topic_name}`} rel="noreferrer"> */}
-                              <a
-                                href="###"
-                                onClick={() => {
-                                  openDataURI(t.type, `data::text/plain;charset=utf-8,${encodeURIComponent(t.definition)}`)
-                                }}
-                                title="Click to see raw definition"
-                              >
-                                {t.type}
-                              </a>
-                              &nbsp;
-                              <small className={styles.hash} title={t.md5}>
-                                {t.md5_sliced}
-                              </small>
-                            </td>
-                            <td align="left">{t.caller ?? 'N/A'}</td>
-                            <td align="right">{messageCounter[t.topic_name] || 0}</td>
-                            <td align="right">
-                              {((messageCounter[t.topic_name] || 0) / metainfo.duration).toFixed(1)}
-                              <small>Hz</small>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <Table messageCouner={messageCounter}  filteredMap={filteredMap}  metainfo={metainfo}></Table>
                   </>
                 )}
 
