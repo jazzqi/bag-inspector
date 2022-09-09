@@ -5,6 +5,17 @@ table {
   table-layout: fixed !important;
 }
 
+table button {
+  background: none !important;
+  padding: 0 !important;
+  color: #069;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 1em;
+  border: none;
+}
+
 thead tr th {
   top: 130px;
   z-index: 2;
@@ -16,8 +27,9 @@ table td {
   box-sizing: border-box;
 }
 
-table td, table th {
-  padding: 3px 6px;;
+table td,
+table th {
+  padding: 3px 6px;
 }
 
 /* 首行在左 */

@@ -86,16 +86,9 @@ export const Table: React.FC<any> = (props) => {
           <tr key={t.topic_name} id={t.topic_name} className={styles.row}>
             <td align="left">{t.topic_name}</td>
             <td align="left">
-              {/* <a href={`data::text/plain;charset=utf-8,${encodeURIComponent(t.definition)}`} target={`_blank_{t.topic_name}`} rel="noreferrer"> */}
-              <a
-                href="###"
-                onClick={() => {
-                  openDataURI(t.type, `data::text/plain;charset=utf-8,${encodeURIComponent(t.definition)}`)
-                }}
-                title="Click to see raw definition"
-              >
+              <button onClick={() => openDataURI(t.type, `data::text/plain;charset=utf-8,${encodeURIComponent(t.definition)}`)} title="Click to see raw definition">
                 {t.type}
-              </a>
+              </button>
               &nbsp;
               <small className={styles.hash} title={t.md5}>
                 {t.md5_sliced}
