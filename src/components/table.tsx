@@ -1,13 +1,18 @@
 import React, { useCallback, useState } from 'react'
+import { NEO_TIME_SERIES } from '../App'
 import styles from '../App.module.scss'
 import { SORT_BY, SORT_ORDINAL } from '../types'
 import { openDataURI } from '../utils'
 import { SortArrow } from './sort-arrow'
 
-export const Table: React.FC<any> = (props) => {
+export const Table: React.FC<{
+  filteredMap
+  messageSeries: NEO_TIME_SERIES
+  metainfo
+}> = (props) => {
   const [sortBy, setSortBy] = useState<SORT_BY | undefined>()
 
-  const { filteredMap, messageCounter, metainfo } = props
+  const { filteredMap, messageSeries, metainfo } = props
 
   const setSort = useCallback(
     (trigger: string) => {
@@ -95,9 +100,9 @@ export const Table: React.FC<any> = (props) => {
               </small>
             </td>
             <td align="left">{t.caller ?? 'N/A'}</td>
-            <td align="right">{messageCounter[t.topic_name] || 0}</td>
+            <td align="right">{messageSeries[t.topic_name]?.length || 0}</td>
             <td align="right">
-              {((messageCounter[t.topic_name] || 0) / metainfo.duration).toFixed(1)}
+              {((messageSeries[t.topic_name] || 0) / metainfo.duration).toFixed(1)}
               <small>Hz</small>
             </td>
           </tr>

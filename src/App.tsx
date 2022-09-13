@@ -11,7 +11,7 @@ import './table.css'
 
 import Select from 'react-select'
 import BagMeta from './components/bag-meta'
-import { Table } from './components/table'
+import { Table as TopicInfoTable } from './components/table'
 import { Connection } from './types'
 import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
 
@@ -34,19 +34,19 @@ const App = (props: any) => {
     actualEndTime?: any
     actualDuration?: number
   }>(undefined)
-  const [selectedTopicList, setSelectedTopicList] = useState<string[]>([])
+  const [userSelectedTopicList, setUserSelectedTopicList] = useState<string[]>([])
+  const [filteredTopicList, setFilteredTopicList] = useState<string[]>([])
 
   const [readProgress, setReadProgress] = useState<number>(0)
   // const [topicDefinitions, setTopicDefinitions] = useState<Map<string, string[]>>(new Map())
 
-  type COUNTER = { [key: string]: number }
   // type SERIES = Array<Uint32Array>
-  type SERIES = Uint32Array
+  type TIME_SERIES = Uint32Array
 
   const [topicInfoList, setTopicInfoList] = useState<any[]>([])
-  const [messageCounter, setMessageCounter] = useState<COUNTER>({})
   const [topicArray, setTopicArray] = useState<Array<string>>([])
-  const [messageSeries, setMessageSeries] = useState<SERIES>(new Uint32Array())
+  const [messageTimeSeries, setMessageTimeSeries] = useState<TIME_SERIES>(new Uint32Array())
+  const [neoMessageTimeSeries, setNeoMessageTimeSeries] = useState<NEO_TIME_SERIES>(new Map())
   const [toggle, setToggle] = useState<boolean>(true)
 
   const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,17 +83,17 @@ const App = (props: any) => {
     ]
 
     /**
-     * 消息数量
-     */
-    const msg_counter: COUNTER = {}
-    /**
      * Topic 列表
      */
     let topic_array: Array<string> = []
     /**
      * 消息时序
      */
-    const msg_series: Array<number> = []
+    // const msg_time_series: Array<number> = []
+    /**
+     * todo 新的 消息时序
+     */
+    const neo_msg_time_series: NEO_TIME_SERIES = new Map()
 
     Object.entries<Connection>(fileHandler.connections).forEach(([_, v]) => {
       if (!table_columns.find((i) => i.topic_name === v.topic)) {
@@ -107,7 +107,6 @@ const App = (props: any) => {
           count: 0,
           frequency: 0,
         })
-        msg_counter[v.topic] = 0
         topic_array.push(v.topic)
       } else {
         console.log('REPEATED TOPIC', v.topic)
@@ -140,23 +139,34 @@ const App = (props: any) => {
           actual_timespan[1] = msg_timestamp
         }
 
-        msg_counter[topic] = msg_counter[topic] + 1
-
         const relative_timestamp = calculateTimestamp(actual_timespan[0], msg_timestamp)
         const relative_timestamp_ms = convertTimestampToMillisecond(relative_timestamp)
 
-        const topic_index = topic_array.findIndex((i) => i === topic)
-        msg_series.push(topic_index, relative_timestamp_ms)
+        // const topic_index = topic_array.findIndex((i) => i === topic)
+
+        // todo here should only push timestamp to per topic array
+        // msg_time_series.push(topic_index, relative_timestamp_ms)
+
+        if (neo_msg_time_series[topic]) {
+          neo_msg_time_series[topic].push(relative_timestamp_ms)
+        } else {
+          neo_msg_time_series[topic] = [relative_timestamp_ms]
+        }
 
         setReadProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
 
-    console.log(msg_counter)
+    for (const key in neo_msg_time_series) {
+      neo_msg_time_series[key] = new Uint32Array(neo_msg_time_series[key])
+    }
 
-    setMessageCounter(msg_counter)
+    console.log(neo_msg_time_series)
+
     setTopicArray(topic_array)
-    setMessageSeries(new Uint32Array(msg_series))
+    // setMessageTimeSeries(new Uint32Array(msg_time_series))
+    setNeoMessageTimeSeries(neo_msg_time_series)
+
     setMetainfo({
       fileName: files[0].name,
       fileSize: files[0].size,
@@ -175,19 +185,28 @@ const App = (props: any) => {
   useEffect(() => {
     const selected_topics = JSON.parse(localStorage.getItem('selected-topics')) || []
     if (selected_topics && selected_topics.length && selected_topics.length > 0) {
-      setSelectedTopicList(selected_topics)
+      setUserSelectedTopicList(selected_topics)
+      setFilteredTopicList(selected_topics)
+    } else {
+      setFilteredTopicList(topicArray)
     }
-  }, [])
+  }, [topicArray])
 
   const handleChange = (selected_options) => {
     const selected_topics = selected_options.map((i) => i.value)
     localStorage.setItem('selected-topics', JSON.stringify(selected_topics))
-    setSelectedTopicList(selected_topics)
+    setUserSelectedTopicList(selected_topics)
+
+    if (selected_options.length > 0) {
+      setFilteredTopicList(selected_topics)
+    } else {
+      setFilteredTopicList(topicInfoList.map((i) => i.topic_name))
+    }
   }
 
   let filteredMap = topicInfoList
-  if (selectedTopicList.length > 0) {
-    filteredMap = topicInfoList.filter((i) => selectedTopicList.includes(i.topic_name))
+  if (userSelectedTopicList.length > 0) {
+    filteredMap = topicInfoList.filter((i) => userSelectedTopicList.includes(i.topic_name))
   }
 
   // if change anything like topics update the value
@@ -236,29 +255,29 @@ const App = (props: any) => {
                   </div>
                 )}
 
+                {readProgress === 100 && topicInfoList && (
+                  <Select
+                    isMulti
+                    name="selected_topics"
+                    options={topicInfoList.map((t) => ({ value: t.topic_name, label: t.topic_name }))}
+                    defaultValue={userSelectedTopicList.map((t) => ({ value: t, label: t }))}
+                    className="basic-multi-select"
+                    classNamePrefix="select"
+                    onChange={handleChange}
+                    placeholder="Filter Topic Name"
+                    blurInputOnSelect={false}
+                    closeMenuOnSelect={false}
+                  />
+                )}
+
                 {readProgress === 100 && toggle && (
                   <>
-                    {topicInfoList && (
-                      <Select
-                        isMulti
-                        name="selected_topics"
-                        options={topicInfoList.map((t) => ({ value: t.topic_name, label: t.topic_name }))}
-                        defaultValue={selectedTopicList.map((t) => ({ value: t, label: t }))}
-                        className="basic-multi-select"
-                        classNamePrefix="select"
-                        onChange={handleChange}
-                        placeholder="Filter Topic Name"
-                        blurInputOnSelect={false}
-                        closeMenuOnSelect={false}
-                      />
-                    )}
-
-                    <Table messageCounter={messageCounter} filteredMap={filteredMap} metainfo={metainfo}></Table>
+                    <TopicInfoTable messageSeries={neoMessageTimeSeries} filteredMap={filteredMap} metainfo={metainfo}></TopicInfoTable>
                   </>
                 )}
 
                 {/* Timeline Component */}
-                {readProgress === 100 && !toggle ? <Timeline messageSeries={messageSeries} topicArray={topicArray}></Timeline> : null}
+                {readProgress === 100 && !toggle ? <Timeline messageSeries={messageTimeSeries} neoMessageSeries={neoMessageTimeSeries} filteredTopicList={filteredTopicList}></Timeline> : null}
               </div>
             </div>
           )}
@@ -269,3 +288,5 @@ const App = (props: any) => {
 }
 
 export default App
+
+export type NEO_TIME_SERIES = Map<string, Array<number> | Uint32Array>
