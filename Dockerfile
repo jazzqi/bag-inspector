@@ -14,7 +14,7 @@ RUN yarn build
 
 FROM nginx:1.19-alpine AS app
 
-COPY scripts/nginx/ /etc/nginx/
+COPY conf/nginx/ /etc/nginx/
 
 COPY --from=0 /home/node/app/build /usr/share/nginx/html
 
