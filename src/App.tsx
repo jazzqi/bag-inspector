@@ -1,7 +1,7 @@
 import lz4 from 'lz4js'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import Switch from 'react-switch'
+import ReactSwitch from 'react-switch'
 import { open, TimeUtil } from 'rosbag'
 import styles from './App.module.scss'
 import Timeline from './components/timeline-echarts'
@@ -14,6 +14,8 @@ import BagMeta from './components/bag-meta'
 import { Table as TopicInfoTable } from './components/table'
 import { Connection } from './types'
 import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
+
+const Switch = ReactSwitch as any;
 
 const App = (props: any) => {
   const onDrop = useCallback((acceptedFiles) => {
