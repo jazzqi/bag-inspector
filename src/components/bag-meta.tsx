@@ -8,17 +8,17 @@ const BagMeta: React.FC<any> = (props) => {
   return (
     <table>
       <tbody>
-        <tr>
+        {/* <tr>
           <td colSpan={3}>@todo Add param_aggregator information</td>
-        </tr>
+        </tr> */}
         <tr>
           <th align="right">Name:</th>
           <td colSpan={5}>{fileName}</td>
         </tr>
-        <tr>
+        {/* <tr>
           <th align="right">Type:</th>
           <td colSpan={5}>mfbag | rosbag</td>
-        </tr>
+        </tr> */}
         <tr>
           <th align="right">MAF:</th>
           <td colSpan={5}>3.1.0</td>
