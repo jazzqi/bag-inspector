@@ -3,8 +3,8 @@ import prettyBytes from 'pretty-bytes'
 
 // type Props any
 
-const BagMeta: React.FC<any> = (props) => {
-  const { fileName, fileSize, startTime, endTime, duration, actualStartTime, actualEndTime, actualDuration } = props.metainfo
+const BagMetaTable: React.FC<any> = (props) => {
+  const { fileName, fileSize, startTime, endTime, duration, absoluteStartTime, absoluteEndTime, actualDuration } = props.metainfo
   return (
     <table>
       <tbody>
@@ -18,11 +18,11 @@ const BagMeta: React.FC<any> = (props) => {
         {/* <tr>
           <th align="right">Type:</th>
           <td colSpan={5}>mfbag | rosbag</td>
-        </tr> */}
+        </tr>
         <tr>
           <th align="right">MAF:</th>
           <td colSpan={5}>3.1.0</td>
-        </tr>
+        </tr> */}
         <tr>
           <th align="right">Size:</th>
           <td>
@@ -30,7 +30,7 @@ const BagMeta: React.FC<any> = (props) => {
           </td>
         </tr>
         {startTime && <DateElement startTime={startTime} endTime={endTime} duration={duration} showTitle={true}></DateElement>}
-        {actualStartTime && <DateElement startTime={actualStartTime} endTime={actualEndTime} duration={actualDuration} showTitle={false}></DateElement>}
+        {absoluteStartTime && <DateElement startTime={absoluteStartTime} endTime={absoluteEndTime} duration={actualDuration} showTitle={false}></DateElement>}
       </tbody>
     </table>
   )
@@ -82,4 +82,4 @@ const FormatedDateTime: React.FC<{
 //   </span>
 // )
 
-export default BagMeta
+export default BagMetaTable

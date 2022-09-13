@@ -2,13 +2,11 @@ import React, { Component } from 'react'
 import 'echarts-gl'
 import ReactEcharts from 'echarts-for-react'
 
-class Timeline extends Component<{ neoMessageSeries: any; messageSeries: any; filteredTopicList: any }> {
+class Timeline extends Component<{ maxTimestamp: number; neoMessageSeries: any; filteredTopicList: any }> {
   getOption = () => {
-    console.log(this.props.messageSeries)
     console.log(this.props.filteredTopicList)
-    //
 
-    const max_timestamp = this.props.messageSeries[this.props.messageSeries.length - 1]
+    const max_timestamp = this.props.maxTimestamp
 
     const y_size = this.props.filteredTopicList.length
     const y_axis_data = this.props.filteredTopicList
@@ -24,7 +22,6 @@ class Timeline extends Component<{ neoMessageSeries: any; messageSeries: any; fi
       minorSplitLine: { show: true, lineStyle: { color: '#efefef' } },
       splitLine: { show: true, lineStyle: { color: '#e6e6e6' } },
       axisPointer: { show: true, label: { show: true, precision: 0, formatter: '{value}ms' } },
-      // data: this.props.neoMessageSeries,
     }
     const xAxis2 = {
       position: 'top',
@@ -37,28 +34,15 @@ class Timeline extends Component<{ neoMessageSeries: any; messageSeries: any; fi
       minorTick: { show: true, inside: true },
     }
 
-    // const data = this.props.filteredTopicList.map((topic) => this.props.neoMessageSeries[topic])
-
-    // console.log(this.props.filteredTopicList)
-    // console.log(data)
-
-    // const xx = this.props.filteredTopicList.map((topic) => {
-    //   return [topic, ...(this.props.neoMessageSeries[topic] || [])]
-    // })
-    // console.log(xx)
-
     let buffer_length = 0
     this.props.filteredTopicList.forEach((topic) => {
-      // if (this.props.neoMessageSeries[topic]) {
       buffer_length += this.props.neoMessageSeries[topic]?.length || 0
-      // }
     })
-    console.log(buffer_length)
 
     const buffer_data = new Uint32Array(buffer_length * 2)
     let buffer_write_pointer = 0
 
-     this.props.filteredTopicList.forEach((topic, index) => {
+    this.props.filteredTopicList.forEach((topic, index) => {
       if (this.props.neoMessageSeries[topic]) {
         // const one_dimension_data = new Uint32Array(this.props.neoMessageSeries[topic].length * 2)
         console.log(topic, index)
@@ -66,7 +50,7 @@ class Timeline extends Component<{ neoMessageSeries: any; messageSeries: any; fi
           // one_dimension_data[index2 * 2] = index
           // one_dimension_data[index2 * 2 + 1] = ts
           buffer_data[buffer_write_pointer] = index
-          buffer_data[buffer_write_pointer+1] = ts
+          buffer_data[buffer_write_pointer + 1] = ts
           buffer_write_pointer += 2
         })
       }
@@ -107,7 +91,6 @@ class Timeline extends Component<{ neoMessageSeries: any; messageSeries: any; fi
       yAxis: {
         type: 'category',
         data: y_axis_data,
-        // name:'topic_index',
         inverse: true,
         axisTick: { alignWithLabel: true },
         splitArea: { show: true },
@@ -128,10 +111,6 @@ class Timeline extends Component<{ neoMessageSeries: any; messageSeries: any; fi
           fontSize: '11',
           color: 'black',
           inside: false,
-          // formatter: (i) => {
-          //   console.log('axiy', i)
-          //   return i
-          // },
         },
       },
       // 使用多个 series 分别显示不同 topic
@@ -144,7 +123,6 @@ class Timeline extends Component<{ neoMessageSeries: any; messageSeries: any; fi
           large: true,
           symbolSize: [1, 18],
           data: buffer_data,
-          // data: this.props.messageSeries,
           dimensions: [
             { name: 'topic_index', type: 'int' },
             { name: 'timestamp', type: 'int' },

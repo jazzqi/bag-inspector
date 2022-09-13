@@ -2,12 +2,12 @@ FROM artifactory.momenta.works/docker/node:14-buster
 
 USER node
 
-COPY --chown=node:node package.json yarn.lock /home/node/app/
+COPY --chown=node:node package.json yarn.lock tsconfig.json /home/node/app/
 
 WORKDIR /home/node/app
 RUN yarn install --frozen-lockfile
 
-COPY --chown=node:node src public tsconfig.json /home/node/app
+COPY --chown=node:node . /home/node/app
 RUN yarn build
 
 ########################

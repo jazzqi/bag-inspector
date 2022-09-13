@@ -6,16 +6,16 @@ import { open, TimeUtil } from 'rosbag'
 import styles from './App.module.scss'
 import Timeline from './components/timeline-echarts'
 
-// import { intersection } from 'lodash'
-import './table.css'
-
 import Select from 'react-select'
-import BagMeta from './components/bag-meta'
+import BagMetaTable from './components/bag-meta-table'
 import { Table as TopicInfoTable } from './components/table'
 import { Connection } from './types'
 import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
 
-const Switch = ReactSwitch as any;
+// import { intersection } from 'lodash'
+import './table.css'
+
+const Switch = ReactSwitch as any
 
 const App = (props: any) => {
   const onDrop = useCallback((acceptedFiles) => {
@@ -32,24 +32,19 @@ const App = (props: any) => {
     startTime: any
     endTime: any
     duration: number
-    actualStartTime?: any
-    actualEndTime?: any
+    absoluteStartTime?: any
+    absoluteEndTime?: any
+    relativeStartTime: number
+    relativeEndTime: number
     actualDuration?: number
   }>(undefined)
   const [userSelectedTopicList, setUserSelectedTopicList] = useState<string[]>([])
   const [filteredTopicList, setFilteredTopicList] = useState<string[]>([])
 
-  const [readProgress, setReadProgress] = useState<number>(0)
-  // const [topicDefinitions, setTopicDefinitions] = useState<Map<string, string[]>>(new Map())
-
-  // type SERIES = Array<Uint32Array>
-  type TIME_SERIES = Uint32Array
-
-  const [topicInfoList, setTopicInfoList] = useState<any[]>([])
-  const [topicArray, setTopicArray] = useState<Array<string>>([])
-  const [messageTimeSeries, setMessageTimeSeries] = useState<TIME_SERIES>(new Uint32Array())
+  const [progress, setProgress] = useState<number>(0)
+  const [topicInfos, setTopicInfos] = useState<TOPIC_INFOS>([])
   const [neoMessageTimeSeries, setNeoMessageTimeSeries] = useState<NEO_TIME_SERIES>(new Map())
-  const [toggle, setToggle] = useState<boolean>(true)
+  const [toggleTimelineMode, setToggleTimelineMode] = useState<boolean>(true)
 
   const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -58,8 +53,7 @@ const App = (props: any) => {
 
   const clearState = () => {
     setIsDragedFile(false)
-    setTopicInfoList([])
-    // setTopicDefinitions(new Map())
+    setTopicInfos([])
   }
 
   const parseContent = async (files) => {
@@ -75,31 +69,27 @@ const App = (props: any) => {
       startTime: fileHandler.startTime, // 名义起始时间戳
       endTime: fileHandler.endTime, // 名义起始时间戳
       duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
+      relativeStartTime: 0,
+      relativeEndTime: 0,
     })
 
     /**
      * Table 内容
      */
-    const table_columns = [
-      // {topic_name, caller, definition, count, frequency},
-    ]
-
+    const tmp_topic_infos: TOPIC_INFOS = []
     /**
-     * Topic 列表
+     * 消息的相对结束时间
      */
-    let topic_array: Array<string> = []
+    let tmp_latest_relative_timestamp_ms: number = 0
     /**
      * 消息时序
      */
-    // const msg_time_series: Array<number> = []
-    /**
-     * todo 新的 消息时序
-     */
-    const neo_msg_time_series: NEO_TIME_SERIES = new Map()
+    const tmp_neo_msg_time_series: NEO_TIME_SERIES = new Map()
 
+    // 收集 Topic 信息
     Object.entries<Connection>(fileHandler.connections).forEach(([_, v]) => {
-      if (!table_columns.find((i) => i.topic_name === v.topic)) {
-        table_columns.push({
+      if (!tmp_topic_infos.find((i) => i.topic_name === v.topic)) {
+        tmp_topic_infos.push({
           topic_name: v.topic,
           caller: v.callerid,
           md5: v.md5sum,
@@ -109,21 +99,18 @@ const App = (props: any) => {
           count: 0,
           frequency: 0,
         })
-        topic_array.push(v.topic)
       } else {
         console.log('REPEATED TOPIC', v.topic)
       }
     })
 
-    setTopicInfoList(table_columns)
 
-    const actual_timespan = [
+    const absolute_timespan = [
       { sec: Date.now() * 2, nsec: 0 },
       { sec: 1, nsec: 1 },
     ]
 
-    topic_array.sort()
-
+    // 收集消息时间戳分布
     await fileHandler.readMessages(
       {
         noParse: true,
@@ -134,40 +121,33 @@ const App = (props: any) => {
       (res) => {
         const { topic, chunkOffset, totalChunks, timestamp: msg_timestamp } = res
 
-        if (TimeUtil.compare(msg_timestamp, actual_timespan[0]) < 0) {
-          actual_timespan[0] = msg_timestamp
+        if (TimeUtil.compare(msg_timestamp, absolute_timespan[0]) < 0) {
+          absolute_timespan[0] = msg_timestamp
         }
-        if (TimeUtil.compare(msg_timestamp, actual_timespan[1]) > 0) {
-          actual_timespan[1] = msg_timestamp
+        if (TimeUtil.compare(msg_timestamp, absolute_timespan[1]) > 0) {
+          absolute_timespan[1] = msg_timestamp
         }
 
-        const relative_timestamp = calculateTimestamp(actual_timespan[0], msg_timestamp)
+        const relative_timestamp = calculateTimestamp(absolute_timespan[0], msg_timestamp)
         const relative_timestamp_ms = convertTimestampToMillisecond(relative_timestamp)
 
-        // const topic_index = topic_array.findIndex((i) => i === topic)
-
-        // todo here should only push timestamp to per topic array
-        // msg_time_series.push(topic_index, relative_timestamp_ms)
-
-        if (neo_msg_time_series[topic]) {
-          neo_msg_time_series[topic].push(relative_timestamp_ms)
+        if (tmp_neo_msg_time_series[topic]) {
+          tmp_neo_msg_time_series[topic].push(relative_timestamp_ms)
         } else {
-          neo_msg_time_series[topic] = [relative_timestamp_ms]
+          tmp_neo_msg_time_series[topic] = [relative_timestamp_ms]
+        }
+        if (relative_timestamp_ms > tmp_latest_relative_timestamp_ms) {
+          tmp_latest_relative_timestamp_ms = relative_timestamp_ms
         }
 
-        setReadProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
+        setProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
 
-    for (const key in neo_msg_time_series) {
-      neo_msg_time_series[key] = new Uint32Array(neo_msg_time_series[key])
+    // 转换为 TypedArray
+    for (const key in tmp_neo_msg_time_series) {
+      tmp_neo_msg_time_series[key] = new Uint32Array(tmp_neo_msg_time_series[key])
     }
-
-    console.log(neo_msg_time_series)
-
-    setTopicArray(topic_array)
-    // setMessageTimeSeries(new Uint32Array(msg_time_series))
-    setNeoMessageTimeSeries(neo_msg_time_series)
 
     setMetainfo({
       fileName: files[0].name,
@@ -175,12 +155,14 @@ const App = (props: any) => {
       startTime: fileHandler.startTime, // 名义起始时间戳
       endTime: fileHandler.endTime, // 名义起始时间戳
       duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
-      actualStartTime: actual_timespan[0], // 实际起始时间戳
-      actualEndTime: actual_timespan[1], // 实际起始时间戳
-      actualDuration: TimeUtil.compare(actual_timespan[1], actual_timespan[0]),
+      absoluteStartTime: absolute_timespan[0], // 实际起始时间戳
+      absoluteEndTime: absolute_timespan[1], // 实际结束时间戳
+      relativeStartTime: 0, // 相对起始时间戳 0
+      relativeEndTime: tmp_latest_relative_timestamp_ms, // 相对结束时间戳
+      actualDuration: TimeUtil.compare(absolute_timespan[1], absolute_timespan[0]),
     })
-
-    console.log(topic_array)
+    setTopicInfos(tmp_topic_infos)
+    setNeoMessageTimeSeries(tmp_neo_msg_time_series)
   }
 
   // 恢复 localstorage 中存储的 topics
@@ -190,11 +172,12 @@ const App = (props: any) => {
       setUserSelectedTopicList(selected_topics)
       setFilteredTopicList(selected_topics)
     } else {
-      setFilteredTopicList(topicArray)
+      setFilteredTopicList(topicInfos.map((i) => i.topic_name))
     }
-  }, [topicArray])
+  }, [topicInfos])
 
-  const handleChange = (selected_options) => {
+  // 处理用户筛选 topic
+  const handleSelectChange = (selected_options) => {
     const selected_topics = selected_options.map((i) => i.value)
     localStorage.setItem('selected-topics', JSON.stringify(selected_topics))
     setUserSelectedTopicList(selected_topics)
@@ -202,17 +185,14 @@ const App = (props: any) => {
     if (selected_options.length > 0) {
       setFilteredTopicList(selected_topics)
     } else {
-      setFilteredTopicList(topicInfoList.map((i) => i.topic_name))
+      setFilteredTopicList(topicInfos.map((i) => i.topic_name))
     }
   }
 
-  let filteredMap = topicInfoList
+  let filteredTopicInfos = topicInfos
   if (userSelectedTopicList.length > 0) {
-    filteredMap = topicInfoList.filter((i) => userSelectedTopicList.includes(i.topic_name))
+    filteredTopicInfos = topicInfos.filter((i) => userSelectedTopicList.includes(i.topic_name))
   }
-
-  // if change anything like topics update the value
-  //
 
   return (
     <div>
@@ -228,7 +208,7 @@ const App = (props: any) => {
           {metainfo && (
             <div className={styles.baginfo}>
               <hr />
-              {readProgress === 100 && (
+              {progress === 100 && (
                 <>
                   <label className={styles.switch}>
                     <Switch
@@ -238,48 +218,48 @@ const App = (props: any) => {
                       uncheckedIcon={false}
                       checkedIcon={true}
                       onChange={() => {
-                        setToggle(!toggle)
+                        setToggleTimelineMode(!toggleTimelineMode)
                       }}
-                      checked={!toggle}
+                      checked={!toggleTimelineMode}
                     />
                     <span> Timeline Mode</span>
                   </label>
                 </>
               )}
               <div className={styles.pd}>
-                <BagMeta metainfo={metainfo}></BagMeta>
+                <BagMetaTable metainfo={metainfo}></BagMetaTable>
               </div>
               <hr />
               <div className={styles.pd}>
-                {readProgress < 100 && (
+                {progress < 100 && (
                   <div className={styles.pd}>
-                    <em>{readProgress}%</em>
+                    <em>{progress}%</em>
                   </div>
                 )}
 
-                {readProgress === 100 && topicInfoList && (
+                {progress === 100 && topicInfos && (
                   <Select
                     isMulti
                     name="selected_topics"
-                    options={topicInfoList.map((t) => ({ value: t.topic_name, label: t.topic_name }))}
+                    options={topicInfos.map((t) => ({ value: t.topic_name, label: t.topic_name }))}
                     defaultValue={userSelectedTopicList.map((t) => ({ value: t, label: t }))}
                     className="basic-multi-select"
                     classNamePrefix="select"
-                    onChange={handleChange}
+                    onChange={handleSelectChange}
                     placeholder="Filter Topic Name"
                     blurInputOnSelect={false}
                     closeMenuOnSelect={false}
                   />
                 )}
 
-                {readProgress === 100 && toggle && (
+                {progress === 100 && toggleTimelineMode && (
                   <>
-                    <TopicInfoTable messageSeries={neoMessageTimeSeries} filteredMap={filteredMap} metainfo={metainfo}></TopicInfoTable>
+                    <TopicInfoTable messageSeries={neoMessageTimeSeries} filteredTopicInfos={filteredTopicInfos} metainfo={metainfo}></TopicInfoTable>
                   </>
                 )}
 
                 {/* Timeline Component */}
-                {readProgress === 100 && !toggle ? <Timeline messageSeries={messageTimeSeries} neoMessageSeries={neoMessageTimeSeries} filteredTopicList={filteredTopicList}></Timeline> : null}
+                {progress === 100 && !toggleTimelineMode ? <Timeline maxTimestamp={metainfo.relativeEndTime} neoMessageSeries={neoMessageTimeSeries} filteredTopicList={filteredTopicList}></Timeline> : null}
               </div>
             </div>
           )}
@@ -292,3 +272,5 @@ const App = (props: any) => {
 export default App
 
 export type NEO_TIME_SERIES = Map<string, Array<number> | Uint32Array>
+
+export type TOPIC_INFOS = Array<{ topic_name: string; caller: string; md5: string; md5_sliced: string; type: string; definition: string; count: number; frequency: number }>

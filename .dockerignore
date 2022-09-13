@@ -1,0 +1,8 @@
+node_modules
+build
+.git
+mock
+.gitignore
+.prettierrc.yaml
+README.md
+yarn-error.log
