@@ -19,12 +19,18 @@ const Switch = ReactSwitch as any
 
 const App = (props: any) => {
   const onDrop = useCallback((acceptedFiles) => {
+    console.log('drop bag!')
     const files = acceptedFiles
     parseContent(files)
   }, [])
 
-  const { getRootProps, getInputProps, isDragActive: isDragDropActivated } = useDropzone({ onDrop })
-  const [isDragedFile, setIsDragedFile] = useState<boolean>(true)
+  const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('read bag!')
+    const files = event.target.files
+    parseContent(files)
+  }
+
+  const { getRootProps, getInputProps, isDragActive: isDragDropActivated } = useDropzone({ onDrop, noClick: true, maxFiles: 1 })
 
   const [metainfo, setMetainfo] = useState<{
     fileName: string
@@ -46,32 +52,14 @@ const App = (props: any) => {
   const [neoMessageTimeSeries, setNeoMessageTimeSeries] = useState<NEO_TIME_SERIES>(new Map())
   const [toggleTimelineMode, setToggleTimelineMode] = useState<boolean>(true)
 
-  const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    parseContent(files)
-  }
-
   const clearState = () => {
-    setIsDragedFile(false)
     setTopicInfos([])
   }
 
   const parseContent = async (files) => {
-    clearState()
-
     if (files.length === 0) return
 
-    const fileHandler = await open(files[0])
-
-    setMetainfo({
-      fileName: files[0].name,
-      fileSize: files[0].size,
-      startTime: fileHandler.startTime, // 名义起始时间戳
-      endTime: fileHandler.endTime, // 名义起始时间戳
-      duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
-      relativeStartTime: 0,
-      relativeEndTime: 0,
-    })
+    clearState()
 
     /**
      * Table 内容
@@ -85,6 +73,18 @@ const App = (props: any) => {
      * 消息时序
      */
     const tmp_neo_msg_time_series: NEO_TIME_SERIES = new Map()
+
+    const fileHandler = await open(files[0])
+
+    setMetainfo({
+      fileName: files[0].name,
+      fileSize: files[0].size,
+      startTime: fileHandler.startTime, // 名义起始时间戳
+      endTime: fileHandler.endTime, // 名义起始时间戳
+      duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
+      relativeStartTime: 0,
+      relativeEndTime: 0,
+    })
 
     // 收集 Topic 信息
     Object.entries<Connection>(fileHandler.connections).forEach(([_, v]) => {
@@ -103,7 +103,6 @@ const App = (props: any) => {
         console.log('REPEATED TOPIC', v.topic)
       }
     })
-
 
     const absolute_timespan = [
       { sec: Date.now() * 2, nsec: 0 },
@@ -196,39 +195,44 @@ const App = (props: any) => {
 
   return (
     <div>
-      <input type="file" accept=".bag, .mfbag" onChange={readBag} style={{ display: 'none' }}></input>
+      {/* <input type="file" accept=".bag, .mfbag" onChange={readBag} style={{ display: 'none' }}></input> */}
 
-      {isDragedFile ? (
-        <div {...getRootProps()} className={`${styles.dragdrop} ${isDragDropActivated && styles.activated}`}>
-          <input {...getInputProps()} onChange={readBag} />
-          {isDragDropActivated ? <div></div> : <div>拖入 rosbag 文件</div>}
-        </div>
-      ) : (
+      <div {...getRootProps()} className={styles.dragdropContainer}>
+        <input {...getInputProps()} onChange={readBag} />
+
+        {!metainfo && (
+          <div className={`${styles.dragdropZone} ${isDragDropActivated && styles.activated}`}>
+            <div>Drag and drop rosbag</div>
+          </div>
+        )}
+
         <>
           {metainfo && (
             <div className={styles.baginfo}>
-              <hr />
-              {progress === 100 && (
-                <>
-                  <label className={styles.switch}>
-                    <Switch
-                      height={14}
-                      width={28}
-                      handleDiameter={12}
-                      uncheckedIcon={false}
-                      checkedIcon={true}
-                      onChange={() => {
-                        setToggleTimelineMode(!toggleTimelineMode)
-                      }}
-                      checked={!toggleTimelineMode}
-                    />
-                    <span> Timeline Mode</span>
-                  </label>
-                </>
-              )}
-              <div className={styles.pd}>
-                <BagMetaTable metainfo={metainfo}></BagMetaTable>
-              </div>
+              <>
+                <hr />
+                {progress === 100 && (
+                  <>
+                    <label className={styles.switch}>
+                      <Switch
+                        height={14}
+                        width={28}
+                        handleDiameter={12}
+                        uncheckedIcon={false}
+                        checkedIcon={true}
+                        onChange={() => {
+                          setToggleTimelineMode(!toggleTimelineMode)
+                        }}
+                        checked={!toggleTimelineMode}
+                      />
+                      <span> Timeline Mode</span>
+                    </label>
+                  </>
+                )}
+                <div className={styles.pd}>
+                  <BagMetaTable metainfo={metainfo}></BagMetaTable>
+                </div>
+              </>
               <hr />
               <div className={styles.pd}>
                 {progress < 100 && (
@@ -264,7 +268,7 @@ const App = (props: any) => {
             </div>
           )}
         </>
-      )}
+      </div>
     </div>
   )
 }

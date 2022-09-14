@@ -40,22 +40,28 @@
   background-color: white;
 }
 
-.dragdrop {
+
+.dragdropContainer {
+  min-height: 98vh;
+}
+
+.dragdropZone {
   position: fixed;
   width: 100vw;
   height: 100vh;
   top: 0;
   bottom: 0;
-  // background-color: #caf0f8;
   text-align: center;
   line-height: 100vh;
   font-size: 50px;
-  color: #0a0a0a;
+  color: #555;
 }
 
-.dragdrop.activated {
-  // background-color: #488692;
+.dragdropZone.activated {
+  color: #333;
+  font-weight: 600;
 }
+
 
 .topicsTable {
   // width: 1000px;
