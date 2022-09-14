@@ -1,205 +1,276 @@
-import React, { useState, useCallback } from 'react'
 import lz4 from 'lz4js'
-import './App.css'
-import { open, TimeUtil } from 'rosbag'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-let topics_all = {}
+import ReactSwitch from 'react-switch'
+import { open, TimeUtil } from 'rosbag'
+import styles from './App.module.scss'
+import Timeline from './components/timeline-echarts'
+
+import Select from 'react-select'
+import BagMetaTable from './components/bag-meta-table'
+import { Table as TopicInfoTable } from './components/table'
+import { Connection } from './types'
+import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
+
+// import { intersection } from 'lodash'
+import './table.css'
+
+const Switch = ReactSwitch as any
 
 const App = (props: any) => {
   const onDrop = useCallback((acceptedFiles) => {
-    // Do something with the files
     const files = acceptedFiles
-    parseFile(files)
+    parseContent(files)
   }, [])
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop })
-  const [topicCounter, setTopicCounter] = useState<any>()
-  const [isDragFile, setIsDragFile] = useState<boolean>(true)
-  const [metadata, setMetadata] = useState<any>(null)
-  const [topicList, setTopicList] = useState<string[]>([])
-  const [progress, setProgress] = useState<number>(0)
-  const [tpoicSum, setTopicSum] = useState<number>(0)
-  const [msgDefinitions, setMsgDefinitions] = useState<Map<string, string[]>>(new Map())
+  const { getRootProps, getInputProps, isDragActive: isDragDropActivated } = useDropzone({ onDrop })
+  const [isDragedFile, setIsDragedFile] = useState<boolean>(true)
 
-  const process = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const [metainfo, setMetainfo] = useState<{
+    fileName: string
+    fileSize: number
+    startTime: any
+    endTime: any
+    duration: number
+    absoluteStartTime?: any
+    absoluteEndTime?: any
+    relativeStartTime: number
+    relativeEndTime: number
+    actualDuration?: number
+  }>(undefined)
+  const [userSelectedTopicList, setUserSelectedTopicList] = useState<string[]>([])
+  const [filteredTopicList, setFilteredTopicList] = useState<string[]>([])
+
+  const [progress, setProgress] = useState<number>(0)
+  const [topicInfos, setTopicInfos] = useState<TOPIC_INFOS>([])
+  const [neoMessageTimeSeries, setNeoMessageTimeSeries] = useState<NEO_TIME_SERIES>(new Map())
+  const [toggleTimelineMode, setToggleTimelineMode] = useState<boolean>(true)
+
+  const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
-    parseFile(files)
+    parseContent(files)
   }
 
-  const parseFile = async (files) => {
-    setIsDragFile(false)
-    setTopicList(new Array())
-    setMsgDefinitions(new Map())
-    topics_all = {}
+  const clearState = () => {
+    setIsDragedFile(false)
+    setTopicInfos([])
+  }
 
-    if (files.length === 0) {
-      return
-    }
-    const bag = await open(files[0])
-    let sum = (bag.endTime.sec - bag.startTime.sec) * 500 + parseInt(((bag.endTime.sec - bag.startTime.sec) / 2000000) as any)
-    setTopicSum(sum)
-    setMetadata({
-      startTime: bag.startTime,
-      endTime: bag.endTime,
-      duration: TimeUtil.compare(bag.endTime, bag.startTime),
+  const parseContent = async (files) => {
+    clearState()
+
+    if (files.length === 0) return
+
+    const fileHandler = await open(files[0])
+
+    setMetainfo({
+      fileName: files[0].name,
+      fileSize: files[0].size,
+      startTime: fileHandler.startTime, // 名义起始时间戳
+      endTime: fileHandler.endTime, // 名义起始时间戳
+      duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
+      relativeStartTime: 0,
+      relativeEndTime: 0,
     })
 
-    const msgTypes = new Map<string, string[]>()
+    /**
+     * Table 内容
+     */
+    const tmp_topic_infos: TOPIC_INFOS = []
+    /**
+     * 消息的相对结束时间
+     */
+    let tmp_latest_relative_timestamp_ms: number = 0
+    /**
+     * 消息时序
+     */
+    const tmp_neo_msg_time_series: NEO_TIME_SERIES = new Map()
 
-    interface Connection {
-      topic: string
-      type: string
-      messageDefinition: string
-      callerid: string
-      md5sum: string
-    }
-    Object.entries<Connection>(bag.connections).forEach(([_, v]) => {
-      msgTypes.set(v.topic, [v.callerid, v.type, v.md5sum, v.messageDefinition])
+    // 收集 Topic 信息
+    Object.entries<Connection>(fileHandler.connections).forEach(([_, v]) => {
+      if (!tmp_topic_infos.find((i) => i.topic_name === v.topic)) {
+        tmp_topic_infos.push({
+          topic_name: v.topic,
+          caller: v.callerid,
+          md5: v.md5sum,
+          md5_sliced: v.md5sum.slice(0, 8),
+          type: v.type,
+          definition: v.messageDefinition,
+          count: 0,
+          frequency: 0,
+        })
+      } else {
+        console.log('REPEATED TOPIC', v.topic)
+      }
     })
 
-    setMsgDefinitions(msgTypes)
-    const topics = new Set<string>()
-    const counter = {}
 
-    await bag.readMessages(
+    const absolute_timespan = [
+      { sec: Date.now() * 2, nsec: 0 },
+      { sec: 1, nsec: 1 },
+    ]
+
+    // 收集消息时间戳分布
+    await fileHandler.readMessages(
       {
         noParse: true,
         decompress: {
-          lz4: (buffer: Buffer, size: number) => {
-            const buff = new Buffer(lz4.decompress(buffer))
-            return buff
-          },
+          lz4: (buffer: Buffer, size: number) => Buffer.from(lz4.decompress(buffer)),
         },
       },
       (res) => {
-        const { topic, chunkOffset, totalChunks, timestamp } = res
-        topics.add(topic)
-        // 取 500 HZ 的数据
-        // (timestamp.sec - bag.startTime.sec) * 500  秒 * 500
-        // ((timestamp.nsec - bag.startTime.nsec) / 2000000) 纳秒除以 500
-        let num = (timestamp.sec - bag.startTime.sec) * 500 + parseInt(((timestamp.nsec - bag.startTime.nsec) / 2000000) as any)
+        const { topic, chunkOffset, totalChunks, timestamp: msg_timestamp } = res
 
-        if (topics_all[topic]) {
-          let temp = topics_all[topic]
-          if (temp[temp.length - 1] !== num) {
-            temp.push(num)
-            topics_all[topic] = temp
-          }
-        } else {
-          let temp = new Array()
-          temp.push(num)
-          topics_all[topic] = temp
+        if (TimeUtil.compare(msg_timestamp, absolute_timespan[0]) < 0) {
+          absolute_timespan[0] = msg_timestamp
+        }
+        if (TimeUtil.compare(msg_timestamp, absolute_timespan[1]) > 0) {
+          absolute_timespan[1] = msg_timestamp
         }
 
-        topics.add(topic)
-        if (counter[topic]) {
-          counter[topic] = counter[topic] + 1
+        const relative_timestamp = calculateTimestamp(absolute_timespan[0], msg_timestamp)
+        const relative_timestamp_ms = convertTimestampToMillisecond(relative_timestamp)
+
+        if (tmp_neo_msg_time_series[topic]) {
+          tmp_neo_msg_time_series[topic].push(relative_timestamp_ms)
         } else {
-          counter[topic] = 1
+          tmp_neo_msg_time_series[topic] = [relative_timestamp_ms]
+        }
+        if (relative_timestamp_ms > tmp_latest_relative_timestamp_ms) {
+          tmp_latest_relative_timestamp_ms = relative_timestamp_ms
         }
 
         setProgress(Math.round(((chunkOffset + 1) / totalChunks) * 100))
       }
     )
-    setTopicCounter(counter)
-    setTopicList(Array.from(topics).sort())
+
+    // 转换为 TypedArray
+    for (const key in tmp_neo_msg_time_series) {
+      tmp_neo_msg_time_series[key] = new Uint32Array(tmp_neo_msg_time_series[key])
+    }
+
+    setMetainfo({
+      fileName: files[0].name,
+      fileSize: files[0].size,
+      startTime: fileHandler.startTime, // 名义起始时间戳
+      endTime: fileHandler.endTime, // 名义起始时间戳
+      duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
+      absoluteStartTime: absolute_timespan[0], // 实际起始时间戳
+      absoluteEndTime: absolute_timespan[1], // 实际结束时间戳
+      relativeStartTime: 0, // 相对起始时间戳 0
+      relativeEndTime: tmp_latest_relative_timestamp_ms, // 相对结束时间戳
+      actualDuration: TimeUtil.compare(absolute_timespan[1], absolute_timespan[0]),
+    })
+    setTopicInfos(tmp_topic_infos)
+    setNeoMessageTimeSeries(tmp_neo_msg_time_series)
+  }
+
+  // 恢复 localstorage 中存储的 topics
+  useEffect(() => {
+    const selected_topics = JSON.parse(localStorage.getItem('selected-topics')) || []
+    if (selected_topics && selected_topics.length && selected_topics.length > 0) {
+      setUserSelectedTopicList(selected_topics)
+      setFilteredTopicList(selected_topics)
+    } else {
+      setFilteredTopicList(topicInfos.map((i) => i.topic_name))
+    }
+  }, [topicInfos])
+
+  // 处理用户筛选 topic
+  const handleSelectChange = (selected_options) => {
+    const selected_topics = selected_options.map((i) => i.value)
+    localStorage.setItem('selected-topics', JSON.stringify(selected_topics))
+    setUserSelectedTopicList(selected_topics)
+
+    if (selected_options.length > 0) {
+      setFilteredTopicList(selected_topics)
+    } else {
+      setFilteredTopicList(topicInfos.map((i) => i.topic_name))
+    }
+  }
+
+  let filteredTopicInfos = topicInfos
+  if (userSelectedTopicList.length > 0) {
+    filteredTopicInfos = topicInfos.filter((i) => userSelectedTopicList.includes(i.topic_name))
   }
 
   return (
     <div>
-      <div style={{ height: '1px', width: '100%' }}>
-        <div className="file">
-          CHOOSE BAG:
-          <input type="file" accept=".bag" onChange={process}></input>
-        </div>
-      </div>
-      {isDragFile ? (
-        <div {...getRootProps()} className="dragFile">
-          <input {...getInputProps()} onChange={process} />
-          {isDragActive ? <p>正在拖拽bag</p> : <p>将文件拖拽到此处,或者单击此处上传bag</p>}
+      <input type="file" accept=".bag, .mfbag" onChange={readBag} style={{ display: 'none' }}></input>
+
+      {isDragedFile ? (
+        <div {...getRootProps()} className={`${styles.dragdrop} ${isDragDropActivated && styles.activated}`}>
+          <input {...getInputProps()} onChange={readBag} />
+          {isDragDropActivated ? <div></div> : <div>拖入 rosbag 文件</div>}
         </div>
       ) : (
         <>
-          {' '}
-          {metadata ? (
-            <div className="baginfo">
-              <div style={{ height: '80px' }}>
-                <div className="information">
-                  <hr />
-                  <div>
-                    <b>Start Time:</b>
-                    <FormatedDateTime datetime={metadata.startTime}></FormatedDateTime>
-                  </div>
-                  <div>
-                    <b>End Time: </b>
-                    <FormatedDateTime datetime={metadata.endTime}></FormatedDateTime>
-                  </div>
-                  <div>
-                    <b>Duration: </b>
-                    {metadata.duration}s
-                  </div>
-                  <hr />
-                </div>
-              </div>
-              {progress < 100 ? (
-                <div style={{ padding: '20px' }}>{progress}%</div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Topic</th>
-                      <th>Caller ID</th>
-                      <th>Message Definition</th>
-                      <th>Message Definition MD5</th>
-                      <th>Message Count</th>
-                      <th>Message Frequency</th>
-                      <th>Message Frequency Image</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topicList &&
-                      topicList.map((t) => (
-                        <tr id={t}>
-                          <td>{t}</td>
-                          <td>{msgDefinitions.get(t)[0]}</td>
-                          <td>
-                            <span className="msgDef" title={msgDefinitions.get(t)[3]}>
-                              {msgDefinitions.get(t)[1]}
-                            </span>
-                          </td>
-                          <td>{msgDefinitions.get(t)[2]}</td>
-                          <td>{topicCounter[t]}</td>
-                          <td>{Math.round(topicCounter[t] / metadata.duration)}hz</td>
-                          <td>
-                            <div
-                              style={{
-                                position: 'relative',
-                                height: `21px`,
-                                marginRight: '400px',
-                                width: `${tpoicSum * 0.08}px`,
-                                backgroundColor: '#D3D3D3',
-                              }}
-                            >
-                              {topics_all[t].map((str) => (
-                                <i style={{ position: 'absolute', float: 'left', left: `${str * 0.08}px`, width: '0.08px', height: `20px`, backgroundColor: 'blue' }} />
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+          {metainfo && (
+            <div className={styles.baginfo}>
+              <hr />
+              {progress === 100 && (
+                <>
+                  <label className={styles.switch}>
+                    <Switch
+                      height={14}
+                      width={28}
+                      handleDiameter={12}
+                      uncheckedIcon={false}
+                      checkedIcon={true}
+                      onChange={() => {
+                        setToggleTimelineMode(!toggleTimelineMode)
+                      }}
+                      checked={!toggleTimelineMode}
+                    />
+                    <span> Timeline Mode</span>
+                  </label>
+                </>
               )}
+              <div className={styles.pd}>
+                <BagMetaTable metainfo={metainfo}></BagMetaTable>
+              </div>
+              <hr />
+              <div className={styles.pd}>
+                {progress < 100 && (
+                  <div className={styles.pd}>
+                    <em>{progress}%</em>
+                  </div>
+                )}
+
+                {progress === 100 && topicInfos && (
+                  <Select
+                    isMulti
+                    name="selected_topics"
+                    options={topicInfos.map((t) => ({ value: t.topic_name, label: t.topic_name }))}
+                    defaultValue={userSelectedTopicList.map((t) => ({ value: t, label: t }))}
+                    className="basic-multi-select"
+                    classNamePrefix="select"
+                    onChange={handleSelectChange}
+                    placeholder="Filter Topic Name"
+                    blurInputOnSelect={false}
+                    closeMenuOnSelect={false}
+                  />
+                )}
+
+                {progress === 100 && toggleTimelineMode && (
+                  <>
+                    <TopicInfoTable messageSeries={neoMessageTimeSeries} filteredTopicInfos={filteredTopicInfos} metainfo={metainfo}></TopicInfoTable>
+                  </>
+                )}
+
+                {/* Timeline Component */}
+                {progress === 100 && !toggleTimelineMode ? <Timeline maxTimestamp={metainfo.relativeEndTime} neoMessageSeries={neoMessageTimeSeries} filteredTopicList={filteredTopicList}></Timeline> : null}
+              </div>
             </div>
-          ) : null}
+          )}
         </>
       )}
     </div>
   )
 }
 
-const FormatedDateTime: React.FC<{
-  datetime: { sec: number; nsec: number }
-}> = (props) => <span>{`${new Date(props.datetime.sec * 1000).toLocaleString()} sec: ${props.datetime.sec} nsec: ${props.datetime.nsec}`}</span>
-
 export default App
+
+export type NEO_TIME_SERIES = Map<string, Array<number> | Uint32Array>
+
+export type TOPIC_INFOS = Array<{ topic_name: string; caller: string; md5: string; md5_sliced: string; type: string; definition: string; count: number; frequency: number }>
