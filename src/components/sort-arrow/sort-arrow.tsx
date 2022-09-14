@@ -1,6 +1,6 @@
 import React from 'react'
 import styles from './sort-arrow.module.scss'
-import { SORT_ORDINAL } from '../../types'
+import { SORT_ORDINAL } from '../../type'
 
 const SortArrow = (props: { ordinal: SORT_ORDINAL | undefined; onClick: () => void }) => {
   // ▶

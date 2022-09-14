@@ -1,11 +1,9 @@
 import React, { useCallback, useState } from 'react'
-import { NEO_TIME_SERIES, TOPIC_INFOS } from '../App'
 import styles from '../App.module.scss'
-import { SORT_BY, SORT_ORDINAL } from '../types'
 import { openDataURI } from '../utils'
 import { SortArrow } from './sort-arrow'
 
-export const Table: React.FC<{
+export const TopicInfoTable: React.FC<{
   filteredTopicInfos: TOPIC_INFOS
   messageSeries: NEO_TIME_SERIES
   metainfo
@@ -111,3 +109,5 @@ export const Table: React.FC<{
     </table>
   )
 }
+
+export default TopicInfoTable

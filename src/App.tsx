@@ -1,18 +1,18 @@
 import lz4 from 'lz4js'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import ReactSwitch from 'react-switch'
 import { open, TimeUtil } from 'rosbag'
-import styles from './App.module.scss'
+import ReactSwitch from 'react-switch'
+import Select from 'react-select'
+
+import BagMetaTable from './components/bag-meta-table'
+import TopicInfoTable from './components/topic-info-table'
 import Timeline from './components/timeline-echarts'
 
-import Select from 'react-select'
-import BagMetaTable from './components/bag-meta-table'
-import { Table as TopicInfoTable } from './components/table'
-import { Connection } from './types'
+import styles from './App.module.scss'
+
 import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
 
-// import { intersection } from 'lodash'
 import './table.css'
 
 const Switch = ReactSwitch as any
@@ -32,24 +32,13 @@ const App = (props: any) => {
 
   const { getRootProps, getInputProps, isDragActive: isDragDropActivated } = useDropzone({ onDrop, noClick: true, maxFiles: 1 })
 
-  const [metainfo, setMetainfo] = useState<{
-    fileName: string
-    fileSize: number
-    startTime: any
-    endTime: any
-    duration: number
-    absoluteStartTime?: any
-    absoluteEndTime?: any
-    relativeStartTime: number
-    relativeEndTime: number
-    actualDuration?: number
-  }>(undefined)
-  const [userSelectedTopicList, setUserSelectedTopicList] = useState<string[]>([])
-  const [filteredTopicList, setFilteredTopicList] = useState<string[]>([])
-
-  const [progress, setProgress] = useState<number>(0)
+  const [metainfo, setMetainfo] = useState<META_INFO>(undefined)
   const [topicInfos, setTopicInfos] = useState<TOPIC_INFOS>([])
   const [neoMessageTimeSeries, setNeoMessageTimeSeries] = useState<NEO_TIME_SERIES>(new Map())
+
+  const [progress, setProgress] = useState<number>(0)
+  const [userSelectedTopicList, setUserSelectedTopicList] = useState<string[]>([])
+  const [filteredTopicList, setFilteredTopicList] = useState<string[]>([])
   const [toggleTimelineMode, setToggleTimelineMode] = useState<boolean>(true)
 
   const clearState = () => {
@@ -87,7 +76,7 @@ const App = (props: any) => {
     })
 
     // 收集 Topic 信息
-    Object.entries<Connection>(fileHandler.connections).forEach(([_, v]) => {
+    Object.entries<CONNECTION>(fileHandler.connections).forEach(([_, v]) => {
       if (!tmp_topic_infos.find((i) => i.topic_name === v.topic)) {
         tmp_topic_infos.push({
           topic_name: v.topic,
@@ -274,7 +263,3 @@ const App = (props: any) => {
 }
 
 export default App
-
-export type NEO_TIME_SERIES = Map<string, Array<number> | Uint32Array>
-
-export type TOPIC_INFOS = Array<{ topic_name: string; caller: string; md5: string; md5_sliced: string; type: string; definition: string; count: number; frequency: number }>

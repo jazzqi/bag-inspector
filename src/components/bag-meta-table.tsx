@@ -1,8 +1,6 @@
 import React from 'react'
 import prettyBytes from 'pretty-bytes'
 
-// type Props any
-
 const BagMetaTable: React.FC<any> = (props) => {
   const { fileName, fileSize, startTime, endTime, duration, absoluteStartTime, absoluteEndTime, actualDuration } = props.metainfo
   return (
