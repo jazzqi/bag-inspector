@@ -137,6 +137,7 @@ const App = (props: any) => {
       tmp_neo_msg_time_series[key] = new Uint32Array(tmp_neo_msg_time_series[key])
     }
 
+    // todo should persists those data on cloud
     setMetainfo({
       fileName: files[0].name,
       fileSize: files[0].size,
