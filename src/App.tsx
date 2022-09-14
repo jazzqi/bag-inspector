@@ -51,6 +51,10 @@ const App = (props: any) => {
     clearState()
 
     /**
+     * Meta 内容
+     */
+    let tmp_meta_info: META_INFO = undefined
+    /**
      * Table 内容
      */
     const tmp_topic_infos: TOPIC_INFOS = []
@@ -65,7 +69,7 @@ const App = (props: any) => {
 
     const fileHandler = await open(files[0])
 
-    setMetainfo({
+    tmp_meta_info = {
       fileName: files[0].name,
       fileSize: files[0].size,
       startTime: fileHandler.startTime, // 名义起始时间戳
@@ -73,7 +77,8 @@ const App = (props: any) => {
       duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
       relativeStartTime: 0,
       relativeEndTime: 0,
-    })
+    }
+    setMetainfo(tmp_meta_info)
 
     // 收集 Topic 信息
     Object.entries<CONNECTION>(fileHandler.connections).forEach(([_, v]) => {
@@ -137,21 +142,23 @@ const App = (props: any) => {
       tmp_neo_msg_time_series[key] = new Uint32Array(tmp_neo_msg_time_series[key])
     }
 
-    // todo should persists those data on cloud
-    setMetainfo({
-      fileName: files[0].name,
-      fileSize: files[0].size,
-      startTime: fileHandler.startTime, // 名义起始时间戳
-      endTime: fileHandler.endTime, // 名义起始时间戳
-      duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
+    tmp_meta_info = {
       absoluteStartTime: absolute_timespan[0], // 实际起始时间戳
       absoluteEndTime: absolute_timespan[1], // 实际结束时间戳
       relativeStartTime: 0, // 相对起始时间戳 0
       relativeEndTime: tmp_latest_relative_timestamp_ms, // 相对结束时间戳
       actualDuration: TimeUtil.compare(absolute_timespan[1], absolute_timespan[0]),
-    })
+      ...tmp_meta_info,
+    }
+    // todo should persists those data on cloud
+    setMetainfo(tmp_meta_info)
     setTopicInfos(tmp_topic_infos)
+    JSON.stringify({
+      meta_info: tmp_meta_info,
+      topic_infos: tmp_topic_infos,
+    })
     setNeoMessageTimeSeries(tmp_neo_msg_time_series)
+    // write arraybufffer
   }
 
   // 恢复 localstorage 中存储的 topics
