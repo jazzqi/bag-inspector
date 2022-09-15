@@ -1,23 +1,14 @@
 import lz4 from 'lz4js'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { open, TimeUtil } from 'rosbag'
-import ReactSwitch from 'react-switch'
-import Select from 'react-select'
-
-import BagMetaTable from './components/bag-meta-table'
-import TopicInfoTable from './components/topic-info-table'
-import Timeline from './components/timeline-echarts'
 
 import styles from './App.module.scss'
 
+import Main from './components/main/main'
 import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
 
-import './table.css'
-
-const Switch = ReactSwitch as any
-
-const App = (props: any) => {
+const App: React.FC = () => {
   const onDrop = useCallback((acceptedFiles) => {
     console.log('drop bag!')
     const files = acceptedFiles
@@ -37,9 +28,6 @@ const App = (props: any) => {
   const [neoMessageTimeSeries, setNeoMessageTimeSeries] = useState<NEO_TIME_SERIES>(new Map())
 
   const [progress, setProgress] = useState<number>(0)
-  const [userSelectedTopicList, setUserSelectedTopicList] = useState<string[]>([])
-  const [filteredTopicList, setFilteredTopicList] = useState<string[]>([])
-  const [toggleTimelineMode, setToggleTimelineMode] = useState<boolean>(true)
 
   const clearState = () => {
     setTopicInfos([])
@@ -161,35 +149,6 @@ const App = (props: any) => {
     // write arraybufffer
   }
 
-  // 恢复 localstorage 中存储的 topics
-  useEffect(() => {
-    const selected_topics = JSON.parse(localStorage.getItem('selected-topics')) || []
-    if (selected_topics && selected_topics.length && selected_topics.length > 0) {
-      setUserSelectedTopicList(selected_topics)
-      setFilteredTopicList(selected_topics)
-    } else {
-      setFilteredTopicList(topicInfos.map((i) => i.topic_name))
-    }
-  }, [topicInfos])
-
-  // 处理用户筛选 topic
-  const handleSelectChange = (selected_options) => {
-    const selected_topics = selected_options.map((i) => i.value)
-    localStorage.setItem('selected-topics', JSON.stringify(selected_topics))
-    setUserSelectedTopicList(selected_topics)
-
-    if (selected_options.length > 0) {
-      setFilteredTopicList(selected_topics)
-    } else {
-      setFilteredTopicList(topicInfos.map((i) => i.topic_name))
-    }
-  }
-
-  let filteredTopicInfos = topicInfos
-  if (userSelectedTopicList.length > 0) {
-    filteredTopicInfos = topicInfos.filter((i) => userSelectedTopicList.includes(i.topic_name))
-  }
-
   return (
     <div>
       {/* <input type="file" accept=".bag, .mfbag" onChange={readBag} style={{ display: 'none' }}></input> */}
@@ -203,68 +162,12 @@ const App = (props: any) => {
           </div>
         )}
 
-        <>
-          {metainfo && (
-            <div className={styles.baginfo}>
-              <>
-                <hr />
-                {progress === 100 && (
-                  <>
-                    <label className={styles.switch}>
-                      <Switch
-                        height={14}
-                        width={28}
-                        handleDiameter={12}
-                        uncheckedIcon={false}
-                        checkedIcon={true}
-                        onChange={() => {
-                          setToggleTimelineMode(!toggleTimelineMode)
-                        }}
-                        checked={!toggleTimelineMode}
-                      />
-                      <span> Timeline Mode</span>
-                    </label>
-                  </>
-                )}
-                <div className={styles.pd}>
-                  <BagMetaTable metainfo={metainfo}></BagMetaTable>
-                </div>
-              </>
-              <hr />
-              <div className={styles.pd}>
-                {progress < 100 && (
-                  <div className={styles.pd}>
-                    <em>{progress}%</em>
-                  </div>
-                )}
-
-                {progress === 100 && topicInfos && (
-                  <Select
-                    isMulti
-                    name="selected_topics"
-                    options={topicInfos.map((t) => ({ value: t.topic_name, label: t.topic_name }))}
-                    defaultValue={userSelectedTopicList.map((t) => ({ value: t, label: t }))}
-                    className="basic-multi-select"
-                    classNamePrefix="select"
-                    onChange={handleSelectChange}
-                    placeholder="Filter Topic Name"
-                    blurInputOnSelect={false}
-                    closeMenuOnSelect={false}
-                  />
-                )}
-
-                {progress === 100 && toggleTimelineMode && (
-                  <>
-                    <TopicInfoTable messageSeries={neoMessageTimeSeries} filteredTopicInfos={filteredTopicInfos} metainfo={metainfo}></TopicInfoTable>
-                  </>
-                )}
-
-                {/* Timeline Component */}
-                {progress === 100 && !toggleTimelineMode ? <Timeline maxTimestamp={metainfo.relativeEndTime} neoMessageSeries={neoMessageTimeSeries} filteredTopicList={filteredTopicList}></Timeline> : null}
-              </div>
-            </div>
-          )}
-        </>
+        <Main
+          metainfo={metainfo}
+          progress={progress}
+          topicInfos={topicInfos}
+          neoMessageTimeSeries={neoMessageTimeSeries}
+        ></Main>
       </div>
     </div>
   )
