@@ -8,7 +8,7 @@ import TopicInfoTable from '../topic-info-table'
 import Timeline from '../timeline-echarts'
 
 import styles from '../../App.module.scss'
-import './table.css'
+import '../../table.css'
 
 const Switch = ReactSwitch as any
 

@@ -1,6 +1,10 @@
 import React from 'react'
 import styles from './sort-arrow.module.scss'
-import { SORT_ORDINAL } from '../../type'
+
+export enum SORT_ORDINAL {
+  'ASC' = 'ASC',
+  'DESC' = 'DESC',
+}
 
 const SortArrow = (props: { ordinal: SORT_ORDINAL | undefined; onClick: () => void }) => {
   // ▶
@@ -24,3 +28,5 @@ const SortArrow = (props: { ordinal: SORT_ORDINAL | undefined; onClick: () => vo
 }
 
 export { SortArrow }
+
+

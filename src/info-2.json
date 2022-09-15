@@ -1,0 +1,35 @@
+{
+  "meta_info": {
+    "absoluteStartTime": { "sec": 1655864120, "nsec": 604163000 },
+    "absoluteEndTime": { "sec": 1655864150, "nsec": 720283000 },
+    "relativeStartTime": 0,
+    "relativeEndTime": 0,
+    "actualDuration": 30,
+    "fileName": "PLA5WE81_event_dbw_disabled_takeover_20220622-101535_0.bag",
+    "fileSize": 130946385,
+    "startTime": { "sec": 1655864120, "nsec": 620283000 },
+    "endTime": { "sec": 1655864150, "nsec": 720283000 },
+    "duration": 30
+  },
+  "topic_infos": [
+    { "topic_name": "/hdmap/localmap/map_offline", "md5": "7eca2875738b080021c2204849c2e420", "md5_sliced": "7eca2875", "type": "hdmap_msgs/LocalMap", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/hdmap/localmap", "md5": "7eca2875738b080021c2204849c2e420", "md5_sliced": "7eca2875", "type": "hdmap_msgs/LocalMap", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/hdmap/version", "md5": "2176decaecbce78abc3b96ef049fabed", "md5_sliced": "2176deca", "type": "std_msgs/Header", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/np_planning/info", "md5": "2176decaecbce78abc3b96ef049fabed", "md5_sliced": "2176deca", "type": "std_msgs/Header", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/mdebug", "md5": "2176decaecbce78abc3b96ef049fabed", "md5_sliced": "2176deca", "type": "std_msgs/Header", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/vehicle/wheel_report", "md5": "78cd5c80d780eb3064d5391332dd45a0", "md5_sliced": "78cd5c80", "type": "endpoint_msgs/WheelReport", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/worldmodel/traffic_light", "md5": "b7f645cce17d5f0d2990d3fdd1ce0e6d", "md5_sliced": "b7f645cc", "type": "perception_interface_msgs/TrafficLightPerception", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/msim/msd/function_module_status", "md5": "86c1703d78b00cc9b3801d9f7f8872b8", "md5_sliced": "86c1703d", "type": "framework_status_msgs/ModuleStatus", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/msd/function_module_status", "md5": "86c1703d78b00cc9b3801d9f7f8872b8", "md5_sliced": "86c1703d", "type": "framework_status_msgs/ModuleStatus", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/msim/mla/egopose", "md5": "2c3279aa219ebf0fd077a633409818c0", "md5_sliced": "2c3279aa", "type": "mla_localization_msgs/MLALocalization", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/mla/egopose", "md5": "2c3279aa219ebf0fd077a633409818c0", "md5_sliced": "2c3279aa", "type": "mla_localization_msgs/MLALocalization", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/msd/endpoint/control_command", "md5": "29209ed23f6aeb734f60e696ae5180c7", "md5_sliced": "29209ed2", "type": "endpoint_msgs/ControlCommand", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/vehicle/chassis_report", "md5": "0274c26201853262ec038614ffba2f08", "md5_sliced": "0274c262", "type": "endpoint_msgs/ChassisReport", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/msim/vehicle/chassis_report", "md5": "0274c26201853262ec038614ffba2f08", "md5_sliced": "0274c262", "type": "endpoint_msgs/ChassisReport", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/vehicle/body_report", "md5": "71b94591dfcc67c011235f2cfefbd02e", "md5_sliced": "71b94591", "type": "endpoint_msgs/BodyReport", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/msim/msd/planning/plan", "md5": "d24bc430664d24f21e2aa3e023251a6f", "md5_sliced": "d24bc430", "type": "planning_msgs/Planning", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/msd/prediction/prediction_result", "md5": "98d35f2ea7a009d33ba7047839f0bc26", "md5_sliced": "98d35f2e", "type": "worldmodel_msgs/PredictionResult", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/perception/fusion/object", "md5": "e520d063154b27dcb72c02e62b34de45", "md5_sliced": "e520d063", "type": "perception_interface_msgs/PerceptionFusionObjectResult", "definition": "", "count": 0, "frequency": 0 },
+    { "topic_name": "/msd/planning/plan", "md5": "d24bc430664d24f21e2aa3e023251a6f", "md5_sliced": "d24bc430", "type": "planning_msgs/Planning", "definition": "", "count": 0, "frequency": 0 }
+  ]
+}

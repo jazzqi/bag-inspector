@@ -75,14 +75,14 @@ const App: React.FC = () => {
           topic_name: v.topic,
           caller: v.callerid,
           md5: v.md5sum,
-          md5_sliced: v.md5sum.slice(0, 8),
+          // md5_sliced: v.md5sum.slice(0, 8),
           type: v.type,
-          definition: v.messageDefinition,
+          definition: '', //v.messageDefinition,
           count: 0,
           frequency: 0,
         })
       } else {
-        console.log('REPEATED TOPIC', v.topic)
+        console.log('Collected TOPIC', v.topic)
       }
     })
 
@@ -139,14 +139,20 @@ const App: React.FC = () => {
       ...tmp_meta_info,
     }
     // todo should persists those data on cloud
-    setMetainfo(tmp_meta_info)
-    setTopicInfos(tmp_topic_infos)
-    JSON.stringify({
+    // 要兼容历史数据
+    const info = JSON.stringify({
       meta_info: tmp_meta_info,
       topic_infos: tmp_topic_infos,
     })
-    setNeoMessageTimeSeries(tmp_neo_msg_time_series)
+
+    // localStorage.setItem('tmp_neo_msg_time_series', tmp_neo_msg_time_series)
+    // 存储
+    localStorage.setItem('info', info)
     // write arraybufffer
+
+    setMetainfo(tmp_meta_info)
+    setTopicInfos(tmp_topic_infos.map((i) => ({ ...i, md5_sliced: i.md5.slice(0, 8) })))
+    setNeoMessageTimeSeries(tmp_neo_msg_time_series)
   }
 
   return (
@@ -162,12 +168,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <Main
-          metainfo={metainfo}
-          progress={progress}
-          topicInfos={topicInfos}
-          neoMessageTimeSeries={neoMessageTimeSeries}
-        ></Main>
+        <Main metainfo={metainfo} progress={progress} topicInfos={topicInfos} neoMessageTimeSeries={neoMessageTimeSeries}></Main>
       </div>
     </div>
   )

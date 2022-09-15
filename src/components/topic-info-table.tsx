@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react'
 import styles from '../App.module.scss'
 import { openDataURI } from '../utils'
-import { SortArrow } from './sort-arrow'
+import { SortArrow, SORT_ORDINAL } from './sort-arrow'
 
 export const TopicInfoTable: React.FC<{
   filteredTopicInfos: TOPIC_INFOS
@@ -94,7 +94,7 @@ export const TopicInfoTable: React.FC<{
               </button>
               &nbsp;
               <small className={styles.hash} title={t.md5}>
-                {t.md5_sliced}
+                {t.md5_sliced || t.md5.slice(0, 8)}
               </small>
             </td>
             <td align="left">{t.caller ?? 'N/A'}</td>

@@ -1,3 +1,3 @@
-import { SortArrow } from './sort-arrow'
+import { SortArrow, SORT_ORDINAL } from './sort-arrow'
 
-export { SortArrow }
+export { SortArrow, SORT_ORDINAL }
