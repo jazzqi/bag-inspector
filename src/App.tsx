@@ -152,6 +152,8 @@ const App: React.FC = () => {
 
     setMetainfo(tmp_meta_info)
     setTopicInfos(tmp_topic_infos.map((i) => ({ ...i, md5_sliced: i.md5.slice(0, 8) })))
+
+    // should save this in bjson format
     setNeoMessageTimeSeries(tmp_neo_msg_time_series)
   }
 
