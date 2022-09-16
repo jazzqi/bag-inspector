@@ -2,6 +2,8 @@ import lz4 from 'lz4js'
 import React, { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { open, TimeUtil } from 'rosbag'
+import BSON, { Binary, serialize, deserialize } from 'bson'
+import { Buffer } from 'buffer'
 
 import styles from './App.module.scss'
 
@@ -25,7 +27,7 @@ const App: React.FC = () => {
 
   const [metainfo, setMetainfo] = useState<META_INFO>(undefined)
   const [topicInfos, setTopicInfos] = useState<TOPIC_INFOS>([])
-  const [neoMessageTimeSeries, setNeoMessageTimeSeries] = useState<NEO_TIME_SERIES>(new Map())
+  const [neoMessageTimeSeries, setNeoMessageTimeSeries] = useState<NEO_TIME_SERIES<Uint32Array>>({})
 
   const [progress, setProgress] = useState<number>(0)
 
@@ -53,7 +55,15 @@ const App: React.FC = () => {
     /**
      * 消息时序
      */
-    const tmp_neo_msg_time_series: NEO_TIME_SERIES = new Map()
+    const tmp_neo_msg_time_series_array: NEO_TIME_SERIES<Array<number>> = {}
+    /**
+     * 消息时序
+     */
+    const tmp_neo_msg_time_series_typed_array: NEO_TIME_SERIES<Uint32Array> = {}
+    /**
+     * 消息时序
+     */
+    const tmp_neo_msg_time_series_bson: NEO_TIME_SERIES<Binary> = {}
 
     const fileHandler = await open(files[0])
 
@@ -112,10 +122,10 @@ const App: React.FC = () => {
         const relative_timestamp = calculateTimestamp(absolute_timespan[0], msg_timestamp)
         const relative_timestamp_ms = convertTimestampToMillisecond(relative_timestamp)
 
-        if (tmp_neo_msg_time_series[topic]) {
-          tmp_neo_msg_time_series[topic].push(relative_timestamp_ms)
+        if (tmp_neo_msg_time_series_array[topic]) {
+          tmp_neo_msg_time_series_array[topic].push(relative_timestamp_ms)
         } else {
-          tmp_neo_msg_time_series[topic] = [relative_timestamp_ms]
+          tmp_neo_msg_time_series_array[topic] = [relative_timestamp_ms]
         }
         if (relative_timestamp_ms > tmp_latest_relative_timestamp_ms) {
           tmp_latest_relative_timestamp_ms = relative_timestamp_ms
@@ -125,18 +135,13 @@ const App: React.FC = () => {
       }
     )
 
-    // 转换为 TypedArray
-    for (const key in tmp_neo_msg_time_series) {
-      tmp_neo_msg_time_series[key] = new Uint32Array(tmp_neo_msg_time_series[key])
-    }
-
     tmp_meta_info = {
+      ...tmp_meta_info,
       absoluteStartTime: absolute_timespan[0], // 实际起始时间戳
       absoluteEndTime: absolute_timespan[1], // 实际结束时间戳
       relativeStartTime: 0, // 相对起始时间戳 0
       relativeEndTime: tmp_latest_relative_timestamp_ms, // 相对结束时间戳
       actualDuration: TimeUtil.compare(absolute_timespan[1], absolute_timespan[0]),
-      ...tmp_meta_info,
     }
     // todo should persists those data on cloud
     // 要兼容历史数据
@@ -154,7 +159,38 @@ const App: React.FC = () => {
     setTopicInfos(tmp_topic_infos.map((i) => ({ ...i, md5_sliced: i.md5.slice(0, 8) })))
 
     // should save this in bjson format
-    setNeoMessageTimeSeries(tmp_neo_msg_time_series)
+    // 转换为 TypedArray
+    for (const key in tmp_neo_msg_time_series_array) {
+      tmp_neo_msg_time_series_typed_array[key] = new Uint32Array(tmp_neo_msg_time_series_array[key])
+    }
+    // setNeoMessageTimeSeries(tmp_neo_msg_time_series_typed_array)
+    console.log(tmp_neo_msg_time_series_typed_array)
+
+    // 转换为 bson 格式的二进制文件
+    for (const key in tmp_neo_msg_time_series_typed_array) {
+      tmp_neo_msg_time_series_bson[key] = new Binary(Buffer.from(tmp_neo_msg_time_series_typed_array[key].buffer))
+    }
+
+    console.log(tmp_neo_msg_time_series_bson)
+
+    // test those bson codes
+    console.log('bson')
+    var serialized_data = serialize(tmp_neo_msg_time_series_bson)
+    var deserialized_data = deserialize(serialized_data, { promoteBuffers: true })
+    console.log(serialized_data)
+    console.log(deserialized_data)
+
+    // convert back to normal Uint32Array
+    const deserialized_data_typed_array: NEO_TIME_SERIES<Uint32Array> = {}
+    for (const key in deserialized_data) {
+      const { byteOffset: byte_offset, length: content_length } = deserialized_data[key]
+      const byte_end = byte_offset + content_length
+      console.log(byte_offset, byte_end, deserialized_data[key].buffer.slice(byte_offset, byte_end))
+      deserialized_data_typed_array[key] = new Uint32Array(deserialized_data[key].buffer.slice(byte_offset, byte_end))
+    }
+
+    setNeoMessageTimeSeries(deserialized_data_typed_array)
+    console.log(deserialized_data_typed_array)
   }
 
   return (

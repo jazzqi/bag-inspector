@@ -6,8 +6,9 @@ declare interface CONNECTION {
   md5sum: string
 }
 
-
-declare type NEO_TIME_SERIES = Map<string, Array<number> | Uint32Array>
+declare interface NEO_TIME_SERIES<T> {
+  [K: string]: T // Array<number> | Uint32Array
+}
 
 declare type TOPIC_INFOS = Array<{
   topic_name: string
@@ -32,7 +33,6 @@ declare type META_INFO = {
   relativeEndTime: number
   actualDuration?: number
 }
-
 
 declare enum SORT_ORDINAL {
   'ASC' = 'ASC',

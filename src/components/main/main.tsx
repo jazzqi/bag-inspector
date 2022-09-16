@@ -109,6 +109,7 @@ const Main: React.FC<MAIN_PROPS> = (props) => {
             )}
 
             {/* Timeline Component */}
+            {metainfo.relativeEndTime}
             {progress === 100 && !toggleTimelineMode ? <Timeline maxTimestamp={metainfo.relativeEndTime} neoMessageSeries={neoMessageTimeSeries} filteredTopicList={filteredTopicList}></Timeline> : null}
           </div>
         </div>
@@ -123,5 +124,5 @@ type MAIN_PROPS = {
   metainfo: META_INFO
   progress: number
   topicInfos: TOPIC_INFOS
-  neoMessageTimeSeries: NEO_TIME_SERIES
+  neoMessageTimeSeries: NEO_TIME_SERIES<Uint32Array>
 }

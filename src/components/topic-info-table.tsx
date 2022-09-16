@@ -5,7 +5,7 @@ import { SortArrow, SORT_ORDINAL } from './sort-arrow'
 
 export const TopicInfoTable: React.FC<{
   filteredTopicInfos: TOPIC_INFOS
-  messageSeries: NEO_TIME_SERIES
+  messageSeries: NEO_TIME_SERIES<Uint32Array>
   metainfo
 }> = (props) => {
   const [sortBy, setSortBy] = useState<SORT_BY | undefined>()
