@@ -32,17 +32,3 @@ table th {
   padding: 3px 6px;
 }
 
-/* 首行在左 */
-/* table td:first-child {
-  position: sticky;
-  left: 0; 
-  z-index: 1;
-  background-color: white;
-}
-
-table th:first-child {
-  position: sticky;
-  left: 0; 
-  z-index: 3;
-  background-color: white;
-} */

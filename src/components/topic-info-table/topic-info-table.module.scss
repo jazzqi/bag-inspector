@@ -1,0 +1,13 @@
+.topicsTable {
+  max-height: 50vh;
+  overflow-y: auto;
+  line-height: 30px;
+
+  .row {
+    position: relative;
+  }
+
+  .hash {
+    color: grey;
+  }
+}

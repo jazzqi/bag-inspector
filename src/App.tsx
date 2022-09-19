@@ -1,13 +1,13 @@
+import { Binary, deserialize, serialize } from 'bson'
+import { Buffer } from 'buffer'
 import lz4 from 'lz4js'
 import React, { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { open, TimeUtil } from 'rosbag'
-import BSON, { Binary, serialize, deserialize } from 'bson'
-import { Buffer } from 'buffer'
 
 import styles from './App.module.scss'
 
-import Main from './components/main/main'
+import Inspector from './components/inspector/inspector'
 import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
 
 const App: React.FC = () => {
@@ -28,6 +28,7 @@ const App: React.FC = () => {
   const [metainfo, setMetainfo] = useState<META_INFO>(undefined)
   const [topicInfos, setTopicInfos] = useState<TOPIC_INFOS>([])
   const [neoMessageTimeSeries, setNeoMessageTimeSeries] = useState<NEO_TIME_SERIES<Uint32Array>>({})
+  const [messageDefinition, setMessageDefinition] = useState<MSG_DEFINITION_INFOS>({})
 
   const [progress, setProgress] = useState<number>(0)
 
@@ -45,9 +46,13 @@ const App: React.FC = () => {
      */
     let tmp_meta_info: META_INFO = undefined
     /**
-     * Table 内容
+     * TOPIC 列表
      */
     const tmp_topic_infos: TOPIC_INFOS = []
+    /**
+     * MSG 格式定义列表
+     */
+    const tmp_message_definition: MSG_DEFINITION_INFOS = {}
     /**
      * 消息的相对结束时间
      */
@@ -85,16 +90,20 @@ const App: React.FC = () => {
           topic_name: v.topic,
           caller: v.callerid,
           md5: v.md5sum,
-          // md5_sliced: v.md5sum.slice(0, 8),
           type: v.type,
-          definition: '', //v.messageDefinition,
           count: 0,
           frequency: 0,
         })
       } else {
         console.log('Collected TOPIC', v.topic)
       }
+      if (!tmp_message_definition[v.md5sum]) {
+        tmp_message_definition[v.md5sum] = v.messageDefinition
+      }
     })
+
+    console.log('msg definition', tmp_message_definition)
+    setMessageDefinition(tmp_message_definition)
 
     const absolute_timespan = [
       { sec: Date.now() * 2, nsec: 0 },
@@ -177,15 +186,15 @@ const App: React.FC = () => {
     console.log('bson')
     var serialized_data = serialize(tmp_neo_msg_time_series_bson)
     var deserialized_data = deserialize(serialized_data, { promoteBuffers: true })
-    console.log(serialized_data)
-    console.log(deserialized_data)
+    console.log('serial', serialized_data)
+    console.log('deserial', deserialized_data)
 
     // convert back to normal Uint32Array
     const deserialized_data_typed_array: NEO_TIME_SERIES<Uint32Array> = {}
     for (const key in deserialized_data) {
       const { byteOffset: byte_offset, length: content_length } = deserialized_data[key]
       const byte_end = byte_offset + content_length
-      console.log(byte_offset, byte_end, deserialized_data[key].buffer.slice(byte_offset, byte_end))
+      // console.log(byte_offset, byte_end, deserialized_data[key].buffer.slice(byte_offset, byte_end))
       deserialized_data_typed_array[key] = new Uint32Array(deserialized_data[key].buffer.slice(byte_offset, byte_end))
     }
 
@@ -206,7 +215,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <Main metainfo={metainfo} progress={progress} topicInfos={topicInfos} neoMessageTimeSeries={neoMessageTimeSeries}></Main>
+        {metainfo && <Inspector metainfo={metainfo} progress={progress} topicInfos={topicInfos} neoMessageTimeSeries={neoMessageTimeSeries} messageDefinition={messageDefinition}></Inspector>}
       </div>
     </div>
   )

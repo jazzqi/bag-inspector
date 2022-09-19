@@ -1,16 +1,19 @@
 import React, { useCallback, useState } from 'react'
-import styles from '../App.module.scss'
-import { openDataURI } from '../utils'
-import { SortArrow, SORT_ORDINAL } from './sort-arrow'
+import styles from './topic-info-table.module.scss'
+import { openDataURI } from '../../utils'
+import { SortArrow, SORT_ORDINAL } from '../sort-arrow'
+
+import './table.css'
 
 export const TopicInfoTable: React.FC<{
   filteredTopicInfos: TOPIC_INFOS
   messageSeries: NEO_TIME_SERIES<Uint32Array>
+  messageDefinition: MSG_DEFINITION_INFOS
   metainfo
 }> = (props) => {
   const [sortBy, setSortBy] = useState<SORT_BY | undefined>()
 
-  const { filteredTopicInfos, messageSeries, metainfo } = props
+  const { filteredTopicInfos, messageSeries, metainfo, messageDefinition } = props
 
   const setSort = useCallback(
     (trigger: string) => {
@@ -89,9 +92,7 @@ export const TopicInfoTable: React.FC<{
           <tr key={t.topic_name} id={t.topic_name} className={styles.row}>
             <td align="left">{t.topic_name}</td>
             <td align="left">
-              <button onClick={() => openDataURI(t.type, `data::text/plain;charset=utf-8,${encodeURIComponent(t.definition)}`)} title="Click to see raw definition">
-                {t.type}
-              </button>
+              <DefinitionButton messageDefinition={messageDefinition} topic={t}></DefinitionButton>
               &nbsp;
               <small className={styles.hash} title={t.md5}>
                 {t.md5_sliced || t.md5.slice(0, 8)}
@@ -108,6 +109,20 @@ export const TopicInfoTable: React.FC<{
       </tbody>
     </table>
   )
+}
+
+const DefinitionButton: React.FC<DEFINITION_PROP> = (props) => {
+  const { messageDefinition, topic } = props
+  return (
+    <button onClick={() => openDataURI(topic.type, messageDefinition[topic.md5])} title="Click to see raw definition">
+      {topic.type}
+    </button>
+  )
+}
+
+interface DEFINITION_PROP {
+  topic: TOPIC_INFO
+  messageDefinition: MSG_DEFINITION_INFOS
 }
 
 export default TopicInfoTable
