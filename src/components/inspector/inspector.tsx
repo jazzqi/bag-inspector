@@ -20,7 +20,7 @@ const Inspector: React.FC<INSPECTOR_PROPS> = (props) => {
 
   // 恢复 localstorage 中存储的 topics
   useEffect(() => {
-    const selected_topics = JSON.parse(localStorage.getItem('selected-topics')) || []
+    const selected_topics = JSON.parse(localStorage.getItem('selected-topics') || '[]')
     if (selected_topics && selected_topics.length && selected_topics.length > 0) {
       setUserSelectedTopicList(selected_topics)
       setFilteredTopicList(selected_topics)

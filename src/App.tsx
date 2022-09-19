@@ -154,14 +154,14 @@ const App: React.FC = () => {
     }
     // todo should persists those data on cloud
     // 要兼容历史数据
-    const info = JSON.stringify({
+    const serialized_info = JSON.stringify({
       meta_info: tmp_meta_info,
       topic_infos: tmp_topic_infos,
     })
 
     // localStorage.setItem('tmp_neo_msg_time_series', tmp_neo_msg_time_series)
     // 存储
-    localStorage.setItem('info', info)
+    localStorage.setItem('info', serialized_info)
     // write arraybufffer
 
     setMetainfo(tmp_meta_info)
@@ -180,14 +180,10 @@ const App: React.FC = () => {
       tmp_neo_msg_time_series_bson[key] = new Binary(Buffer.from(tmp_neo_msg_time_series_typed_array[key].buffer))
     }
 
-    console.log(tmp_neo_msg_time_series_bson)
-
     // test those bson codes
-    console.log('bson')
     var serialized_data = serialize(tmp_neo_msg_time_series_bson)
     var deserialized_data = deserialize(serialized_data, { promoteBuffers: true })
-    console.log('serial', serialized_data)
-    console.log('deserial', deserialized_data)
+    // todo
 
     // convert back to normal Uint32Array
     const deserialized_data_typed_array: NEO_TIME_SERIES<Uint32Array> = {}
@@ -199,7 +195,6 @@ const App: React.FC = () => {
     }
 
     setNeoMessageTimeSeries(deserialized_data_typed_array)
-    console.log(deserialized_data_typed_array)
   }
 
   return (
