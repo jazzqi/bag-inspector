@@ -76,6 +76,7 @@ const Inspector: React.FC<INSPECTOR_PROPS> = (props) => {
 
           <div className={styles.padded}>
             <BagMetaTable metainfo={metainfo}></BagMetaTable>
+            {props.children}
           </div>
         </>
 
@@ -124,4 +125,5 @@ type INSPECTOR_PROPS = {
   topicInfos: TOPIC_INFOS
   neoMessageTimeSeries: NEO_TIME_SERIES<Uint32Array>
   messageDefinition: MSG_DEFINITION_INFOS
+  children?: React.ReactNode
 }

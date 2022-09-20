@@ -1,7 +1,7 @@
 import { Binary, deserialize, serialize } from 'bson'
 import { Buffer } from 'buffer'
 import lz4 from 'lz4js'
-import React, { useCallback, useState } from 'react'
+import React, { useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { open, TimeUtil } from 'rosbag'
 
@@ -10,12 +10,21 @@ import styles from './App.module.scss'
 import Inspector from './components/inspector/inspector'
 import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
 
+const downloadFile = (content, filename) => {
+  if (localStorage.getItem('export')) {
+    let a = document.createElement('a')
+    a.href = content
+    a.download = filename
+    a.click()
+  }
+}
+
 const App: React.FC = () => {
-  const onDrop = useCallback((acceptedFiles) => {
+  const onDrop = (acceptedFiles) => {
     console.log('drop bag!')
     const files = acceptedFiles
     parseContent(files)
-  }, [])
+  }
 
   const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
     console.log('read bag!')
@@ -105,6 +114,12 @@ const App: React.FC = () => {
     console.log('msg definition', tmp_message_definition)
     setMessageDefinition(tmp_message_definition)
 
+    let blob2 = new Blob([JSON.stringify(tmp_message_definition)], {
+      type: 'application/json', //将会被放入到blob中的数组内容的MIME类型
+    })
+    let objectUrl2 = URL.createObjectURL(blob2) //生成一个url
+    downloadFile(objectUrl2, 'message-definition.json')
+
     const absolute_timespan = [
       { sec: Date.now() * 2, nsec: 0 },
       { sec: 1, nsec: 1 },
@@ -155,9 +170,16 @@ const App: React.FC = () => {
     // todo should persists those data on cloud
     // 要兼容历史数据
     const serialized_info = JSON.stringify({
+      version: 1,
       meta_info: tmp_meta_info,
       topic_infos: tmp_topic_infos,
     })
+
+    let blob1 = new Blob([serialized_info], {
+      type: 'application/json', //将会被放入到blob中的数组内容的MIME类型
+    })
+    let objectUrl1 = URL.createObjectURL(blob1) //生成一个url
+    downloadFile(objectUrl1, 'data.json')
 
     // localStorage.setItem('tmp_neo_msg_time_series', tmp_neo_msg_time_series)
     // 存储
@@ -181,8 +203,8 @@ const App: React.FC = () => {
     }
 
     // test those bson codes
-    var serialized_data = serialize(tmp_neo_msg_time_series_bson)
-    var deserialized_data = deserialize(serialized_data, { promoteBuffers: true })
+    const serialized_time_series = serialize(tmp_neo_msg_time_series_bson)
+    const deserialized_data = deserialize(serialized_time_series, { promoteBuffers: true })
     // todo
 
     // convert back to normal Uint32Array
@@ -193,6 +215,12 @@ const App: React.FC = () => {
       // console.log(byte_offset, byte_end, deserialized_data[key].buffer.slice(byte_offset, byte_end))
       deserialized_data_typed_array[key] = new Uint32Array(deserialized_data[key].buffer.slice(byte_offset, byte_end))
     }
+
+    let blob3 = new Blob([serialized_time_series], {
+      type: 'application/bson', //将会被放入到blob中的数组内容的MIME类型
+    })
+    let objectUrl3 = URL.createObjectURL(blob3) //生成一个url
+    downloadFile(objectUrl3, 'time-series.bson')
 
     setNeoMessageTimeSeries(deserialized_data_typed_array)
   }
