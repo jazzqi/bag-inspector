@@ -2,7 +2,7 @@ import React from 'react'
 import prettyBytes from 'pretty-bytes'
 
 const BagMetaTable: React.FC<any> = (props) => {
-  const { fileName, fileSize, startTime, endTime, duration, absoluteStartTime, absoluteEndTime, actualDuration } = props.metainfo
+  const { fileName, fileSize, startTime, endTime, duration, actualStartTime, actualEndTime, actualDuration } = props.metainfo
   return (
     <table>
       <tbody>
@@ -28,7 +28,7 @@ const BagMetaTable: React.FC<any> = (props) => {
           </td>
         </tr>
         {startTime && <DateElement startTime={startTime} endTime={endTime} duration={duration} showTitle={true}></DateElement>}
-        {absoluteStartTime && <DateElement startTime={absoluteStartTime} endTime={absoluteEndTime} duration={actualDuration} showTitle={false}></DateElement>}
+        {actualStartTime && <DateElement startTime={actualStartTime} endTime={actualEndTime} duration={actualDuration} showTitle={false}></DateElement>}
       </tbody>
     </table>
   )

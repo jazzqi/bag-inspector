@@ -120,7 +120,7 @@ const App: React.FC = () => {
     let objectUrl2 = URL.createObjectURL(blob2) //生成一个url
     downloadFile(objectUrl2, 'message-definition.json')
 
-    const absolute_timespan = [
+    const actual_timespan = [
       { sec: Date.now() * 2, nsec: 0 },
       { sec: 1, nsec: 1 },
     ]
@@ -136,14 +136,14 @@ const App: React.FC = () => {
       (res) => {
         const { topic, chunkOffset, totalChunks, timestamp: msg_timestamp } = res
 
-        if (TimeUtil.compare(msg_timestamp, absolute_timespan[0]) < 0) {
-          absolute_timespan[0] = msg_timestamp
+        if (TimeUtil.compare(msg_timestamp, actual_timespan[0]) < 0) {
+          actual_timespan[0] = msg_timestamp
         }
-        if (TimeUtil.compare(msg_timestamp, absolute_timespan[1]) > 0) {
-          absolute_timespan[1] = msg_timestamp
+        if (TimeUtil.compare(msg_timestamp, actual_timespan[1]) > 0) {
+          actual_timespan[1] = msg_timestamp
         }
 
-        const relative_timestamp = calculateTimestamp(absolute_timespan[0], msg_timestamp)
+        const relative_timestamp = calculateTimestamp(actual_timespan[0], msg_timestamp)
         const relative_timestamp_ms = convertTimestampToMillisecond(relative_timestamp)
 
         if (tmp_neo_msg_time_series_array[topic]) {
@@ -161,11 +161,11 @@ const App: React.FC = () => {
 
     tmp_meta_info = {
       ...tmp_meta_info,
-      absoluteStartTime: absolute_timespan[0], // 实际起始时间戳
-      absoluteEndTime: absolute_timespan[1], // 实际结束时间戳
+      actualStartTime: actual_timespan[0], // 实际起始时间戳
+      actualEndTime: actual_timespan[1], // 实际结束时间戳
       relativeStartTime: 0, // 相对起始时间戳 0
       relativeEndTime: tmp_latest_relative_timestamp_ms, // 相对结束时间戳
-      actualDuration: TimeUtil.compare(absolute_timespan[1], absolute_timespan[0]),
+      actualDuration: TimeUtil.compare(actual_timespan[1], actual_timespan[0]),
     }
     // todo should persists those data on cloud
     // 要兼容历史数据

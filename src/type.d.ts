@@ -32,8 +32,8 @@ declare type META_INFO = {
   startTime: any
   endTime: any
   duration: number
-  absoluteStartTime?: any
-  absoluteEndTime?: any
+  actualStartTime?: any
+  actualEndTime?: any
   relativeStartTime: number
   relativeEndTime: number
   actualDuration?: number
