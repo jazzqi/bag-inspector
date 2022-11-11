@@ -3,19 +3,22 @@ import { Buffer } from 'buffer'
 import lz4 from 'lz4js'
 import React, { useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { open, TimeUtil } from 'rosbag'
+import { open, TimeUtil, Reader } from 'rosbag'
+import * as rosbag from 'rosbag'
 
 import styles from './App.module.scss'
 
 import Inspector from './components/inspector/inspector'
 import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
+import { decode, encode } from 'cbor-x'
+;(window as any).rosbag = rosbag
 
 const downloadFile = (content, filename) => {
   if (localStorage.getItem('export')) {
-    let a = document.createElement('a')
-    a.href = content
-    a.download = filename
-    a.click()
+    const invisible_link = document.createElement('a')
+    invisible_link.href = content
+    invisible_link.download = filename
+    invisible_link.click()
   }
 }
 
@@ -30,6 +33,16 @@ const App: React.FC = () => {
     console.log('read bag!')
     const files = event.target.files
     parseContent(files)
+  }
+
+  // todo implement fetch bag from oss
+  const fetchRemoteBag = async (src) => {
+    //
+    fetch(src).then((res) => {
+      // get the bag binary arraybuffer
+      const blob = res.arrayBuffer()
+      const fetchedBagInstance = new rosbag.default(new rosbag.BagReader(new rosbag.Reader(blob)))
+    })
   }
 
   const { getRootProps, getInputProps, isDragActive: isDragDropActivated } = useDropzone({ onDrop, noClick: true, maxFiles: 1 })
@@ -80,6 +93,10 @@ const App: React.FC = () => {
     const tmp_neo_msg_time_series_bson: NEO_TIME_SERIES<Binary> = {}
 
     const fileHandler = await open(files[0])
+
+    ;(window as any).bagfile = files[0]
+
+    console.log(files[0])
 
     tmp_meta_info = {
       fileName: files[0].name,
@@ -197,6 +214,11 @@ const App: React.FC = () => {
     // setNeoMessageTimeSeries(tmp_neo_msg_time_series_typed_array)
     console.log(tmp_neo_msg_time_series_typed_array)
 
+    let serializedAsCborBuffer = encode(tmp_neo_msg_time_series_typed_array)
+    console.log('cbor bin', serializedAsCborBuffer)
+    let data = decode(serializedAsCborBuffer)
+    console.log('cbor structure', data)
+
     // 转换为 bson 格式的二进制文件
     for (const key in tmp_neo_msg_time_series_typed_array) {
       tmp_neo_msg_time_series_bson[key] = new Binary(Buffer.from(tmp_neo_msg_time_series_typed_array[key].buffer))
@@ -219,6 +241,9 @@ const App: React.FC = () => {
     let blob3 = new Blob([serialized_time_series], {
       type: 'application/bson', //将会被放入到blob中的数组内容的MIME类型
     })
+
+    console.log('blob binary', blob3)
+
     let objectUrl3 = URL.createObjectURL(blob3) //生成一个url
     downloadFile(objectUrl3, 'time-series.bson')
 
