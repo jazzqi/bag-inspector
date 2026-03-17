@@ -20,7 +20,7 @@
     "echarts-gl": "^2.0.9",
     "lodash": "^4.17.21",
     "lz4js": "^0.2.0",
-    "node-sass": "^6.0.0",
+    "node-sass": "^7.0.0",
     "pretty-bytes": "^6.0.0",
     "react": "^16.13.0",
     "react-dom": "^16.13.0",
