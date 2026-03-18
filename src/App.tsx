@@ -43,9 +43,6 @@ const App: React.FC = () => {
   }
 
   // todo implement fetch bag from oss
-  const fetchRemoteBag = async (src: string) => {
-    // Not implemented yet - this is a placeholder for future OSS integration
-  }
 
   const { getRootProps, getInputProps, isDragActive: isDragDropActivated } = useDropzone({ onDrop, noClick: true, maxFiles: 1 })
 
