@@ -3,7 +3,7 @@ import { Buffer } from 'buffer'
 import lz4 from 'lz4js'
 import React, { useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { open, TimeUtil, Reader } from 'rosbag'
+import { open, TimeUtil } from 'rosbag'
 import * as rosbag from 'rosbag'
 
 import styles from './App.module.scss'
@@ -13,17 +13,21 @@ import { calculateTimestamp, convertTimestampToMillisecond } from './utils'
 import { decode, encode } from 'cbor-x'
 ;(window as any).rosbag = rosbag
 
-const downloadFile = (content, filename) => {
+const downloadFile = (content: string | Blob, filename: string) => {
   if (localStorage.getItem('export')) {
     const invisible_link = document.createElement('a')
-    invisible_link.href = content
+    invisible_link.href = typeof content === 'string' ? content : URL.createObjectURL(content)
     invisible_link.download = filename
     invisible_link.click()
+    // Revoke object URL if it was created from a Blob
+    if (!(typeof content === 'string')) {
+      URL.revokeObjectURL(invisible_link.href)
+    }
   }
 }
 
 const App: React.FC = () => {
-  const onDrop = (acceptedFiles) => {
+  const onDrop = (acceptedFiles: File[]) => {
     console.log('drop bag!')
     const files = acceptedFiles
     parseContent(files)
@@ -31,23 +35,21 @@ const App: React.FC = () => {
 
   const readBag = async (event: React.ChangeEvent<HTMLInputElement>) => {
     console.log('read bag!')
-    const files = event.target.files
-    parseContent(files)
+    if (event.target.files) {
+      parseContent(Array.from(event.target.files))
+    } else {
+      parseContent([])
+    }
   }
 
   // todo implement fetch bag from oss
-  const fetchRemoteBag = async (src) => {
-    //
-    fetch(src).then((res) => {
-      // get the bag binary arraybuffer
-      const blob = res.arrayBuffer()
-      const fetchedBagInstance = new rosbag.default(new rosbag.BagReader(new rosbag.Reader(blob)))
-    })
+  const fetchRemoteBag = async (src: string) => {
+    // Not implemented yet - this is a placeholder for future OSS integration
   }
 
   const { getRootProps, getInputProps, isDragActive: isDragDropActivated } = useDropzone({ onDrop, noClick: true, maxFiles: 1 })
 
-  const [metainfo, setMetainfo] = useState<META_INFO>(undefined)
+  const [metainfo, setMetainfo] = useState<META_INFO | undefined>(undefined)
   const [topicInfos, setTopicInfos] = useState<TOPIC_INFOS>([])
   const [neoMessageTimeSeries, setNeoMessageTimeSeries] = useState<NEO_TIME_SERIES<Uint32Array>>({})
   const [messageDefinition, setMessageDefinition] = useState<MSG_DEFINITION_INFOS>({})
@@ -58,7 +60,7 @@ const App: React.FC = () => {
     setTopicInfos([])
   }
 
-  const parseContent = async (files) => {
+  const parseContent = async (files: File[]) => {
     if (files.length === 0) return
 
     clearState()
@@ -66,7 +68,7 @@ const App: React.FC = () => {
     /**
      * Meta 内容
      */
-    let tmp_meta_info: META_INFO = undefined
+    let tmp_meta_info: META_INFO | undefined = undefined
     /**
      * TOPIC 列表
      */
@@ -101,16 +103,16 @@ const App: React.FC = () => {
     tmp_meta_info = {
       fileName: files[0].name,
       fileSize: files[0].size,
-      startTime: fileHandler.startTime, // 名义起始时间戳
-      endTime: fileHandler.endTime, // 名义起始时间戳
-      duration: TimeUtil.compare(fileHandler.endTime, fileHandler.startTime),
+      startTime: fileHandler.startTime ?? { sec: 0, nsec: 0 }, // 名义起始时间戳
+      endTime: fileHandler.endTime ?? { sec: 0, nsec: 0 }, // 名义起始时间戳
+      duration: TimeUtil.compare(fileHandler.endTime ?? { sec: 0, nsec: 0 }, fileHandler.startTime ?? { sec: 0, nsec: 0 }),
       relativeStartTime: 0,
       relativeEndTime: 0,
-    }
+    } as META_INFO
     setMetainfo(tmp_meta_info)
 
     // 收集 Topic 信息
-    Object.entries<CONNECTION>(fileHandler.connections).forEach(([_, v]) => {
+    Object.entries(fileHandler.connections as { [key: string]: CONNECTION }).forEach(([_, v]) => {
       if (!tmp_topic_infos.find((i) => i.topic_name === v.topic)) {
         tmp_topic_infos.push({
           topic_name: v.topic,
@@ -238,7 +240,7 @@ const App: React.FC = () => {
       deserialized_data_typed_array[key] = new Uint32Array(deserialized_data[key].buffer.slice(byte_offset, byte_end))
     }
 
-    let blob3 = new Blob([serialized_time_series], {
+    let blob3 = new Blob([new Uint8Array(serialized_time_series)], {
       type: 'application/bson', //将会被放入到blob中的数组内容的MIME类型
     })
 
