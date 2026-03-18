@@ -1,0 +1,7 @@
+{
+  "buildCommand": "NODE_OPTIONS=\"--max-old-space-size=4096\" yarn build",
+  "installCommand": "yarn install --frozen-lockfile",
+  "outputDirectory": "build",
+  "framework": "create-react-app",
+  "nodeVersion": "24"
+}
