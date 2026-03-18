@@ -28,5 +28,3 @@ const SortArrow = (props: { ordinal: SORT_ORDINAL | undefined; onClick: () => vo
 }
 
 export { SortArrow }
-
-
