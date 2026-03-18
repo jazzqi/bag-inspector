@@ -4,41 +4,42 @@
   "private": true,
   "homepage": ".",
   "dependencies": {
-    "@testing-library/jest-dom": "^4.2.4",
-    "@testing-library/react": "^9.3.2",
-    "@testing-library/user-event": "^7.1.2",
-    "@types/jest": "^24.0.0",
-    "@types/node": "^14.0.0",
-    "@types/react": "^16.9.0",
-    "@types/react-dom": "^16.9.0",
+    "@testing-library/dom": "^10.0.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@types/react-select": "^5.0.1",
-    "bson": "^4.7.0",
+    "bson": "^7.2.0",
     "buffer": "^6.0.3",
-    "cbor-x": "^1.4.1",
-    "echarts": "^5.3.3",
-    "echarts-for-react": "^3.0.2",
+    "cbor-x": "^1.6.4",
+    "echarts": "^5.6.0",
+    "echarts-for-react": "^3.0.6",
     "echarts-gl": "^2.0.9",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
     "lz4js": "^0.2.0",
-    "node-sass": "^7.0.0",
-    "pretty-bytes": "^6.0.0",
-    "react": "^16.13.0",
-    "react-dom": "^16.13.0",
-    "react-dropzone": "^11.4.2",
+    "pretty-bytes": "^7.1.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-dropzone": "^15.0.0",
     "react-scripts": "^5.0.1",
-    "react-select": "^5.4.0",
-    "react-switch": "^7.0.0",
-    "rosbag": "^2.6.3",
-    "typescript": "~4.6.0"
+    "react-select": "^5.10.2",
+    "react-switch": "^7.1.0",
+    "rosbag": "^5.0.0",
+    "sass": "^1.90.0",
+    "typescript": "^5.9.3"
   },
-  "scripts": {
-    "start": "PORT=5000 react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
+    "scripts": {
+      "start": "react-scripts start",
+      "build": "react-scripts build",
+      "test": "react-scripts test",
+      "eject": "react-scripts eject"
+    },
   "eslintConfig": {
-    "extends": "react-app"
+    "extends": ["react-app", "plugin:prettier/recommended"]
   },
   "browserslist": {
     "production": [
@@ -51,5 +52,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@types/lz4js": "^0.2.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5"
   }
 }
