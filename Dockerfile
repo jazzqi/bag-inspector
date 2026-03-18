@@ -1,4 +1,4 @@
-FROM artifactory.momenta.works/docker/node:14-buster
+FROM artifactory.momenta.works/docker/node:24-buster
 
 USER node
 
