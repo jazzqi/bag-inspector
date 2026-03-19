@@ -2,7 +2,7 @@
   "name": "bag-inspector",
   "version": "0.1.0",
   "engines": {
-    "node": "18.x || 20.x || 22.x"
+    "node": "18.x || 20.x || 22.x || 24.x"
   },
   "private": true,
   "homepage": ".",
@@ -28,21 +28,24 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-dropzone": "^15.0.0",
-    "react-scripts": "^5.0.1",
     "react-select": "^5.10.2",
     "react-switch": "^7.1.0",
     "rosbag": "^5.0.0",
     "sass": "^1.90.0",
     "typescript": "^5.9.3"
   },
-    "scripts": {
-      "start": "react-scripts start",
-      "build": "react-scripts build",
-      "test": "react-scripts test",
-      "eject": "react-scripts eject"
-    },
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "react-scripts test"
+  },
   "eslintConfig": {
-    "extends": ["react-app", "plugin:prettier/recommended"]
+    "extends": [
+      "react-app",
+      "plugin:prettier/recommended"
+    ]
   },
   "browserslist": {
     "production": [
@@ -58,7 +61,10 @@
   },
   "devDependencies": {
     "@types/lz4js": "^0.2.2",
+    "@vitejs/plugin-react": "^6.0.1",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.5"
+    "eslint-plugin-prettier": "^5.5.5",
+    "vite": "^8.0.1",
+    "vite-tsconfig-paths": "^6.1.1"
   }
 }

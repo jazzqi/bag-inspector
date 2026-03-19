@@ -1,6 +1,6 @@
 {
-  "buildCommand": "NODE_OPTIONS=\"--max-old-space-size=4096\" yarn build",
+  "buildCommand": "vite build",
   "installCommand": "yarn install --frozen-lockfile",
   "outputDirectory": "build",
-  "framework": "create-react-app"
+  "framework": "vite"
 }
